@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5175);
+const HOST = process.env.HOST || "0.0.0.0";
 const DIST_DIR = path.join(__dirname, "dist");
 const LOGIN_API_URL = process.env.LOGIN_API_URL || "https://stocktraders.vn/service/data/getUserLogin";
 
@@ -96,8 +97,8 @@ createServer(async (req, res) => {
   }
 
   sendText(res, 405, "Method not allowed");
-}).listen(PORT, () => {
-  console.log(`OKR Trader web server listening on http://localhost:${PORT}`);
+}).listen(PORT, HOST, () => {
+  console.log(`OKR Trader web server listening on http://${HOST}:${PORT}`);
 });
 
 function readRequestBody(req) {
