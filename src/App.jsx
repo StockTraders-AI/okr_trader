@@ -27,8 +27,11 @@ export default function App() {
   const [detailTab, setDetailTab] = useState(initialState.detailTab);
   const [showModal, setShowModal] = useState(false);
 
-  const selectedTrader = useMemo(() => traders.find((trader) => trader.id === selectedId), [traders, selectedId]);
-  const isAdmin = user?.role === "admin";
+  const publicAccess = useMemo(() => buildPublicAccess(path, traders), [path, traders]);
+  const activeUser = user || publicAccess.user;
+  const activeSelectedId = activeUser?.role === "trader" ? activeUser.traderId : selectedId;
+  const selectedTrader = useMemo(() => traders.find((trader) => trader.id === activeSelectedId), [traders, activeSelectedId]);
+  const isAdmin = activeUser?.role === "admin";
   const isAdminRoute = path === ADMIN_PATH;
   const isTraderRoute = path === TRADER_PATH;
 
@@ -154,7 +157,7 @@ export default function App() {
     setView("team");
   }
 
-  if (!user) {
+  if (!activeUser) {
     return (
       <div style={pageStyle}>
         <Header logoOnly />
@@ -163,11 +166,11 @@ export default function App() {
     );
   }
 
-  const lockedTrader = user.role === "trader" ? traders.find((trader) => trader.id === user.traderId) : selectedTrader;
+  const lockedTrader = activeUser.role === "trader" ? traders.find((trader) => trader.id === activeUser.traderId) : selectedTrader;
 
   return (
     <div style={pageStyle}>
-      <Header user={user} month={month} year={YEAR} onMonth={handleMonth} onLogout={handleLogout} />
+      <Header user={activeUser} month={month} year={YEAR} onMonth={handleMonth} onLogout={handleLogout} />
 
       {isAdmin && isAdminRoute && (
         <>
@@ -181,7 +184,7 @@ export default function App() {
         </>
       )}
 
-      {user.role === "trader" && isTraderRoute && lockedTrader && (
+      {activeUser.role === "trader" && isTraderRoute && lockedTrader && (
         <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin={false} onTab={setDetailTab} onDay={updateDay} />
       )}
     </div>
