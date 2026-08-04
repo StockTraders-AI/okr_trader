@@ -38,8 +38,9 @@ HOST=0.0.0.0 PORT=5175 LOGIN_API_URL=https://stocktraders.vn/service/data/getUse
 
 ## Database
 
-Server luu du lieu OKR vao file `data/okr-db.json`.
+Server luu du lieu OKR vao SQLite file `data/okr.db`.
 
 - `GET /api/okr-state?year=2026&month=7`: doc du lieu thang
 - `PUT /api/okr-state`: luu danh sach trader/ngay cong/chi tieu hien tai
-- `data/okr-db.json` la du lieu runtime va dang nam trong `.gitignore`
+- `data/okr.db` la du lieu runtime va dang nam trong `.gitignore`
+- Neu con file cu `data/okr-db.json`, server se tu migrate sang `data/okr.db` trong lan chay dau tien

@@ -6,4 +6,6 @@ node_modules/
 .DS_Store
 .vscode/
 .idea/
+data/*.db
+data/*.db.tmp
 data/okr-db.json

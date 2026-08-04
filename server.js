@@ -2,6 +2,7 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, renameSync, stat
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import initSqlJs from "sql.js";
 import { buildTraders } from "./src/utils/okr.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -9,8 +10,12 @@ const PORT = Number(process.env.PORT || 5175);
 const HOST = process.env.HOST || "0.0.0.0";
 const DIST_DIR = path.join(__dirname, "dist");
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, "okr-db.json");
+const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, "okr.db");
+const LEGACY_DB_FILE = path.join(DATA_DIR, "okr-db.json");
 const LOGIN_API_URL = process.env.LOGIN_API_URL || "https://stocktraders.vn/service/data/getUserLogin";
+const sqlReady = initSqlJs({
+  locateFile: (filename) => path.join(__dirname, "node_modules", "sql.js", "dist", filename),
+});
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -69,10 +74,16 @@ async function handleOkrState(req, res) {
   if (req.method === "GET") {
     const year = Number(url.searchParams.get("year") || 2026);
     const month = Number(url.searchParams.get("month") || 7);
-    const db = readDb();
-    const state = ensureMonthState(db, year, month);
-    writeDb(db);
-    sendJson(res, 200, state);
+
+    try {
+      const db = await openDb();
+      const state = readMonthState(db, year, month);
+      saveDb(db);
+      sendJson(res, 200, state);
+    } catch (error) {
+      sendJson(res, 500, { error: error?.message || "Cannot read OKR state" });
+    }
+
     return true;
   }
 
@@ -88,13 +99,13 @@ async function handleOkrState(req, res) {
         return true;
       }
 
-      const db = readDb();
       const state = { year, month, traders };
-      db.months[monthKey(year, month)] = state;
-      writeDb(db);
+      const db = await openDb();
+      writeMonthState(db, state);
+      saveDb(db);
       sendJson(res, 200, { ok: true, ...state });
     } catch (error) {
-      sendJson(res, 400, { error: error?.message || "Invalid request body" });
+      sendJson(res, 400, { error: error?.message || "Cannot save OKR state" });
     }
 
     return true;
@@ -104,34 +115,81 @@ async function handleOkrState(req, res) {
   return true;
 }
 
-function readDb() {
-  if (!existsSync(DB_FILE)) return { version: 1, months: {} };
+async function openDb() {
+  mkdirSync(DATA_DIR, { recursive: true });
+  const SQL = await sqlReady;
+  const db = existsSync(DB_FILE) ? new SQL.Database(readFileSync(DB_FILE)) : new SQL.Database();
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS okr_months (
+      year INTEGER NOT NULL,
+      month INTEGER NOT NULL,
+      traders_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (year, month)
+    )
+  `);
+
+  if (!existsSync(DB_FILE) && existsSync(LEGACY_DB_FILE)) {
+    migrateLegacyJson(db);
+  }
+
+  return db;
+}
+
+function saveDb(db) {
+  const tempFile = `${DB_FILE}.tmp`;
+  writeFileSync(tempFile, Buffer.from(db.export()));
+  renameSync(tempFile, DB_FILE);
+  db.close();
+}
+
+function readMonthState(db, year, month) {
+  const stmt = db.prepare("SELECT traders_json FROM okr_months WHERE year = ? AND month = ?");
 
   try {
-    const db = JSON.parse(readFileSync(DB_FILE, "utf8"));
-    return { version: 1, months: {}, ...db, months: db.months || {} };
+    stmt.bind([year, month]);
+
+    if (stmt.step()) {
+      return {
+        year,
+        month,
+        traders: JSON.parse(stmt.getAsObject().traders_json),
+      };
+    }
+  } finally {
+    stmt.free();
+  }
+
+  const state = { year, month, traders: buildTraders(year, month) };
+  writeMonthState(db, state);
+  return state;
+}
+
+function writeMonthState(db, { year, month, traders }) {
+  db.run(
+    `INSERT OR REPLACE INTO okr_months (year, month, traders_json, updated_at)
+     VALUES (?, ?, ?, ?)`,
+    [year, month, JSON.stringify(traders), new Date().toISOString()],
+  );
+}
+
+function migrateLegacyJson(db) {
+  try {
+    const legacy = JSON.parse(readFileSync(LEGACY_DB_FILE, "utf8"));
+
+    Object.values(legacy?.months || {}).forEach((state) => {
+      if (Number.isInteger(Number(state?.year)) && Number.isInteger(Number(state?.month)) && Array.isArray(state?.traders)) {
+        writeMonthState(db, {
+          year: Number(state.year),
+          month: Number(state.month),
+          traders: state.traders,
+        });
+      }
+    });
   } catch {
-    return { version: 1, months: {} };
+    // Ignore malformed legacy data and let the app create the default month state.
   }
-}
-
-function writeDb(db) {
-  mkdirSync(DATA_DIR, { recursive: true });
-  const tempFile = `${DB_FILE}.tmp`;
-  writeFileSync(tempFile, JSON.stringify(db, null, 2), "utf8");
-  renameSync(tempFile, DB_FILE);
-}
-
-function ensureMonthState(db, year, month) {
-  const key = monthKey(year, month);
-  if (!db.months[key]) {
-    db.months[key] = { year, month, traders: buildTraders(year, month) };
-  }
-  return db.months[key];
-}
-
-function monthKey(year, month) {
-  return `${year}-${month}`;
 }
 
 async function readJsonRequest(req) {
