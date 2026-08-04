@@ -16,17 +16,15 @@ const ADMIN_PATH = "/himlamst";
 const TRADER_PATH = "/trader";
 
 export default function App() {
-  const initialPath = normalizePath(window.location.pathname);
-  const initialTraders = useMemo(() => buildTraders(YEAR, DEFAULT_MONTH), []);
-  const initialAccess = useMemo(() => buildPublicAccess(initialPath, initialTraders), [initialPath, initialTraders]);
+  const [initialState] = useState(createInitialState);
 
-  const [path, setPath] = useState(initialPath);
+  const [path, setPath] = useState(initialState.path);
   const [month, setMonth] = useState(DEFAULT_MONTH);
-  const [traders, setTraders] = useState(initialTraders);
-  const [user, setUser] = useState(initialAccess.user);
-  const [view, setView] = useState(initialAccess.view);
-  const [selectedId, setSelectedId] = useState(initialAccess.selectedId);
-  const [detailTab, setDetailTab] = useState(initialAccess.detailTab);
+  const [traders, setTraders] = useState(initialState.traders);
+  const [user, setUser] = useState(initialState.user);
+  const [view, setView] = useState(initialState.view);
+  const [selectedId, setSelectedId] = useState(initialState.selectedId);
+  const [detailTab, setDetailTab] = useState(initialState.detailTab);
   const [showModal, setShowModal] = useState(false);
 
   const selectedTrader = useMemo(() => traders.find((trader) => trader.id === selectedId), [traders, selectedId]);
@@ -188,6 +186,12 @@ export default function App() {
       )}
     </div>
   );
+}
+
+function createInitialState() {
+  const path = normalizePath(window.location.pathname);
+  const traders = buildTraders(YEAR, DEFAULT_MONTH);
+  return { path, traders, ...buildPublicAccess(path, traders) };
 }
 
 function normalizePath(pathname) {
