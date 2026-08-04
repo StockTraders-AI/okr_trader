@@ -11,7 +11,7 @@ export default function LogView({ trader: tr, year, month, onDay }) {
     <div className="card">
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 14.5, fontWeight: 600 }}>Nhật ký hằng ngày</div>
-        <div style={{ fontSize: 11.5, color: T.dim, marginTop: 2 }}>Ngày công T2-T7 (T7 nửa ngày) cần report. T7 &amp; CN vẫn nhập được nếu chạy thêm task - phần làm thêm vẫn cộng vào chỉ tiêu.</div>
+        <div style={{ fontSize: 11.5, color: T.dim, marginTop: 2 }}>Ngày công T2–T7 (T7 nửa ngày ✼) cần report. T7 &amp; CN vẫn nhập được nếu chạy thêm task — phần làm thêm vẫn cộng vào chỉ tiêu.</div>
       </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ minWidth: 720 }}>
@@ -20,12 +20,12 @@ export default function LogView({ trader: tr, year, month, onDay }) {
             {tr.days.map((day, index) => {
               const date = parseISO(day.date);
               const off = day.type === "off";
-              const dow = `${VN_DOW[date.getDay()]}${day.type === "half" ? " 1/2" : ""}`;
+              const dow = `${VN_DOW[date.getDay()]}${day.type === "half" ? " ½" : ""}`;
               return (
                 <tr key={day.date} className={`day ${day.type}`}>
                   <td className="l"><span style={{ fontFamily: T.mono, fontWeight: 600 }}>{ddmm(date)}</span><span style={{ fontSize: 11, marginLeft: 6, color: off ? "#586074" : T.dim }}>{dow}</span></td>
                   {LOG_COLS.map((column) => (
-                    <td key={column.key}><input className="cell" type="number" value={day[column.key]} onChange={(event) => onDay(tr.id, index, column.key, Number(event.target.value) || 0)} /></td>
+                    <td key={column.key}><input className="cell" type="number" onFocus={(event) => event.target.select()} value={day[column.key] ?? 0} onChange={(event) => onDay(tr.id, index, column.key, Number(event.target.value) || 0)} /></td>
                   ))}
                   <td>{off ? <span style={{ color: "#586074", fontSize: 12 }}>nghỉ</span> : (
                     <button

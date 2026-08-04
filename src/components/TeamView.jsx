@@ -33,7 +33,7 @@ export default function TeamView({ traders, year, month, onOpen }) {
       <div className="card">
         <div style={{ overflowX: "auto" }}>
           <table style={{ minWidth: 820 }}>
-            <thead><tr>{["Trader", "Điểm OKR", "Lời mời", "Kết bạn", "Cộng đồng", "Gr riêng", "Report", "Phạt", ""].map((column, index) => <th key={column || index} className={index === 0 ? "l" : ""}>{column}</th>)}</tr></thead>
+            <thead><tr>{["Trader", "Điểm OKR", "Lời mời", "Kết bạn", "Cộng đồng", "Gr riêng", "Chân dung", "Report", "Phạt", ""].map((column, index) => <th key={column || index} className={index === 0 ? "l" : ""}>{column}</th>)}</tr></thead>
             <tbody>
               {list.map((trader) => {
                 const cachedTotals = totals(trader);
@@ -45,9 +45,9 @@ export default function TeamView({ traders, year, month, onOpen }) {
                   <tr key={trader.id} className="trow" onClick={() => onOpen(trader.id)}>
                     <td className="l"><span className="tname"><span className="avatar">{trader.initials}</span>{trader.name}</span></td>
                     <td><span className="sbar"><i style={{ width: `${Math.min(100, score * 100)}%`, background: status.c }} /></span><span style={{ fontFamily: T.mono, color: status.c, fontWeight: 700 }}>{(score * 100).toFixed(0)}%</span></td>
-                    {cell(trader, "invite", cachedTotals)}{cell(trader, "friend", cachedTotals)}{cell(trader, "comm", cachedTotals)}{cell(trader, "priv", cachedTotals)}
+                    {cell(trader, "invite", cachedTotals)}{cell(trader, "friend", cachedTotals)}{cell(trader, "comm", cachedTotals)}{cell(trader, "priv", cachedTotals)}{cell(trader, "portrait", cachedTotals)}
                     <td><span style={{ fontFamily: T.mono, color: reports >= workDays ? T.green : reports >= workDays * 0.9 ? T.purpleLt : T.red, fontWeight: 600 }}>{reports}/{workDays}</span></td>
-                    <td><span style={{ fontFamily: T.mono, color: fine ? T.red : T.dim }}>{fine ? money(fine) : "-"}</span></td>
+                    <td><span style={{ fontFamily: T.mono, color: fine ? T.red : T.dim }}>{fine ? money(fine) : "—"}</span></td>
                     <td className="chev">›</td>
                   </tr>
                 );

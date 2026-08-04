@@ -25,14 +25,14 @@ export default function ScoreView({ trader: tr, year, month }) {
           <div style={{ fontSize: 11.5, color: T.dim, textAlign: "center", marginTop: 10 }}>Trung bình % hoàn thành của 8 chỉ số (mỗi chỉ số tối đa 100%).</div>
         </div>
         <div className="card">
-          <Mini label="Ngày công (T7 tính 1/2)" value={nf.format(effective)} />
-          <Mini label="Report đã nộp (T2-T7)" value={`${reports}/${workDays}`} />
+          <Mini label="Ngày công (T7 tính ½)" value={nf.format(effective)} />
+          <Mini label="Report đã nộp (T2–T7)" value={`${reports}/${workDays}`} />
           <Mini label="Tỷ lệ accept kết bạn" value={`${(acceptRate * 100).toFixed(1)}%`} color={acceptRate >= 0.25 ? T.green : T.amber} />
         </div>
         <div className="card" style={{ borderColor: missed ? "rgba(255,45,85,.35)" : T.border }}>
           <div className="clabel">Phạt report</div>
           <div style={{ fontFamily: T.mono, fontSize: 26, fontWeight: 700, color: fine ? T.red : T.green }}>{money(fine)}</div>
-          <div style={{ fontSize: 12, color: T.dim, marginTop: 4 }}>{missed > 0 ? `Thiếu ${missed} ngày x 30.000đ` : "Đủ report - không bị trừ."}</div>
+          <div style={{ fontSize: 12, color: T.dim, marginTop: 4 }}>{missed > 0 ? `Thiếu ${missed} ngày × 30.000đ` : "Đủ report — không bị trừ."}</div>
         </div>
       </div>
       <div className="col">

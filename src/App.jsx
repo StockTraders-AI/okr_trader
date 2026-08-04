@@ -9,7 +9,7 @@ import TeamView from "./components/TeamView.jsx";
 import { pageStyle } from "./data/theme.js";
 import { buildSessionUser, loginWithApi } from "./services/authApi.js";
 import { loadOkrState, saveOkrState } from "./services/okrStore.js";
-import { buildTraders, createBlankTrader, rebuildMonth } from "./utils/okr.js";
+import { buildTraders, createBlankTrader, normalizeTrader, rebuildMonth } from "./utils/okr.js";
 
 const YEAR = 2026;
 const DEFAULT_MONTH = 7;
@@ -38,7 +38,7 @@ export default function App() {
     loadOkrState(YEAR, month)
       .then((state) => {
         if (cancelled) return;
-        setTraders(state.traders);
+        setTraders(state.traders.map(normalizeTrader));
         setStoreError("");
       })
       .catch((error) => {

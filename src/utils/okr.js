@@ -42,7 +42,7 @@ export function genDays(year, month, rates, performance = 1, missedReports = 0) 
     const weight = day.type === "full" ? 1 : day.type === "half" ? 0.5 : 0;
     const row = { date: iso(day.date), type: day.type };
 
-    ["invite", "friend", "comm", "priv"].forEach((key) => {
+    ["invite", "friend", "comm", "priv", "portrait"].forEach((key) => {
       row[key] = jitter((rates[key] || 0) * performance * weight, index);
     });
 
@@ -66,11 +66,11 @@ export function genDays(year, month, rates, performance = 1, missedReports = 0) 
 export function buildTraders(year, month) {
   const profiles = [
     { name: "Minh Anh", rates: { ...BASE_RATES }, performance: 0.99, missedReports: 0 },
-    { name: "Thu H\u00e0", rates: { ...BASE_RATES, comm: 8, priv: 4 }, performance: 0.93, missedReports: 1 },
-    { name: "Qu\u1ed1c Huy", rates: { ...BASE_RATES }, performance: 0.74, missedReports: 2 },
-    { name: "B\u1ea3o Tr\u00e2n", rates: { ...BASE_RATES, comm: 12 }, performance: 0.55, missedReports: 3 },
+    { name: "Thu Hà", rates: { ...BASE_RATES, comm: 8, priv: 4 }, performance: 0.93, missedReports: 1 },
+    { name: "Quốc Huy", rates: { ...BASE_RATES }, performance: 0.74, missedReports: 2 },
+    { name: "Bảo Trân", rates: { ...BASE_RATES, comm: 12 }, performance: 0.55, missedReports: 3 },
     {
-      name: "\u0110\u1ee9c Khoa",
+      name: "Đức Khoa",
       rates: { invite: 40, friend: 4, comm: 6, post: 3, port: 15, nav: 10, priv: 4 },
       performance: 0.66,
       missedReports: 2,
@@ -101,6 +101,21 @@ export function createBlankTrader(phone, year, month) {
     performance: 0,
     missedReports: 0,
     days: genDays(year, month, BASE_RATES, 0, 0),
+  };
+}
+
+export function normalizeTrader(trader) {
+  return {
+    ...trader,
+    rates: trader.rates || {},
+    days: (trader.days || []).map((day) => {
+      const nextDay = { ...day };
+      ALL_KRS.forEach((kr) => {
+        if (kr.key !== "report" && nextDay[kr.key] == null) nextDay[kr.key] = 0;
+      });
+      if (nextDay.report == null) nextDay.report = nextDay.type === "off" ? 0 : 1;
+      return nextDay;
+    }),
   };
 }
 
@@ -136,9 +151,9 @@ export function actualFor(trader, key, cachedTotals) {
 }
 
 export function statusOf(progress) {
-  if (progress >= 1) return { tone: "good", c: "#3DD68C", text: "\u0110\u1ea1t" };
-  if (progress >= 0.7) return { tone: "watch", c: "#A78BFA", text: "G\u1ea7n \u0111\u1ea1t" };
-  return { tone: "bad", c: "#FF2D55", text: "Ch\u01b0a \u0111\u1ea1t" };
+  if (progress >= 1) return { tone: "good", c: "#3DD68C", text: "Đạt" };
+  if (progress >= 0.7) return { tone: "watch", c: "#A78BFA", text: "Gần đạt" };
+  return { tone: "bad", c: "#FF2D55", text: "Chưa đạt" };
 }
 
 export function overall(trader, year, month) {
@@ -169,3 +184,4 @@ export function rebuildMonth(trader, year, month) {
 function jitter(value, index) {
   return Math.max(0, Math.round(value * (0.85 + ((index * 13 + 7) % 7) / 20)));
 }
+

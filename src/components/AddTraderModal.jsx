@@ -8,7 +8,7 @@ export default function AddTraderModal({ traders, onClose, onCreate }) {
   function createTrader() {
     const raw = phone.replace(/\s+/g, "");
     if (!/^0\d{8,10}$/.test(raw)) {
-      setError("Số điện thoại không hợp lệ (bắt đầu bằng 0, 9-11 số).");
+      setError("Số điện thoại không hợp lệ (bắt đầu bằng 0, 9–11 số).");
       return;
     }
     if (traders.some((trader) => trader.user === raw)) {
@@ -44,10 +44,10 @@ export default function AddTraderModal({ traders, onClose, onCreate }) {
         </div>
         <div style={{ color: T.red, fontSize: 12, minHeight: 16, margin: "7px 0 2px" }}>{error}</div>
         <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
-          <button className="btn-ghost" style={{ flex: 1 }} onClick={onClose} type="button">Hủy</button>
+          <button className="btn-ghost" style={{ flex: 1 }} onClick={onClose} type="button">Huỷ</button>
           <button className="btn-primary" style={{ flex: 1.4 }} onClick={createTrader} type="button">Tạo trader</button>
         </div>
-        <div className="note" style={{ margin: "16px 0 0", fontSize: 11, lineHeight: 1.6 }}>Đăng nhập &amp; xác thực qua API (OTP theo số điện thoại). Chỉ tiêu mặc định = nhịp chuẩn - chỉnh ở "Đặt chỉ tiêu". Nhật ký bắt đầu trống.</div>
+        <div className="note" style={{ margin: "16px 0 0", fontSize: 11, lineHeight: 1.6 }}>Đăng nhập &amp; xác thực qua API (OTP theo số điện thoại). Chỉ tiêu mặc định = nhịp chuẩn — chỉnh ở «Đặt chỉ tiêu». Nhật ký bắt đầu trống.</div>
       </div>
     </div>
   );

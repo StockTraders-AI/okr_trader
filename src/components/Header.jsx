@@ -5,7 +5,7 @@ export default function Header({ user, month, year, onMonth, onLogout, logoOnly 
     <header style={headerStyle}>
       <img className="sq" src={LOGO} alt="OKR Trader" />
       <div style={{ flex: 1, minWidth: 200 }}>
-        <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>OKR Trader - Chăm sóc và chuyển đổi khách</h1>
+        <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>OKR Trader — Chăm sóc và chuyển đổi khách</h1>
         <div style={{ fontSize: 12.5, color: T.dim, marginTop: 2 }}>Chính sách dành cho Trader được kiểm soát đặc biệt</div>
       </div>
       {!logoOnly && user && (
