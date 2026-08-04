@@ -11,7 +11,7 @@ export default function LoginView({ onLogin }) {
     setLogin((current) => ({ ...current, err: "" }));
 
     try {
-      await onLogin(login.u.trim().toLowerCase(), login.p);
+      await onLogin(login.u.trim(), login.p);
     } catch (error) {
       setLogin((current) => ({ ...current, err: error?.message || "Sai t\u00ean \u0111\u0103ng nh\u1eadp ho\u1eb7c m\u1eadt kh\u1ea9u." }));
     } finally {

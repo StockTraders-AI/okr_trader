@@ -8,6 +8,7 @@ import TargetsView from "./components/TargetsView.jsx";
 import TeamView from "./components/TeamView.jsx";
 import { pageStyle } from "./data/theme.js";
 import { buildSessionUser, loginWithApi } from "./services/authApi.js";
+import { checkAccount } from "./services/checkAccountApi.js";
 import { loadOkrState, saveOkrState } from "./services/okrStore.js";
 import { buildTraders, createBlankTrader, normalizeTrader, rebuildMonth } from "./utils/okr.js";
 
@@ -78,12 +79,7 @@ export default function App() {
     const sessionUser = buildSessionUser(authResult, username, traders);
 
     if (path === ADMIN_PATH) {
-      const nextUser = { ...sessionUser, role: "admin", initials: sessionUser.initials || "AD" };
-      storeSession(nextUser);
-      setUser(nextUser);
-      setView("team");
-      setSelectedId(null);
-      navigate(ADMIN_PATH, setPath, true);
+      await loginAsAdmin(username, sessionUser, true);
       return;
     }
 
@@ -93,15 +89,26 @@ export default function App() {
     }
 
     if (sessionUser.role === "admin") {
-      storeSession(sessionUser);
-      setUser(sessionUser);
-      setView("team");
-      setSelectedId(null);
-      navigate(ADMIN_PATH, setPath);
+      await loginAsAdmin(username, sessionUser);
       return;
     }
 
     loginAsTrader(username, sessionUser);
+  }
+
+  async function loginAsAdmin(username, sessionUser, replace = false) {
+    const accountInfo = await checkAccount(username);
+
+    if (!hasAdminRights(accountInfo)) {
+      throw new Error("Tài khoản không có quyền Admin.");
+    }
+
+    const nextUser = { ...sessionUser, role: "admin", initials: sessionUser.initials || "AD", accountInfo };
+    storeSession(nextUser);
+    setUser(nextUser);
+    setView("team");
+    setSelectedId(null);
+    navigate(ADMIN_PATH, setPath, replace);
   }
 
   function loginAsTrader(username, sessionUser) {
@@ -240,12 +247,20 @@ function readStoredSession(path) {
   try {
     const session = JSON.parse(window.localStorage.getItem(SESSION_KEY) || "null");
     if (!session?.role) return null;
+    if (session.role === "admin" && !hasAdminRights(session.accountInfo)) {
+      clearStoredSession();
+      return null;
+    }
     if (path === ADMIN_PATH && session.role !== "admin") return null;
     if (path === TRADER_PATH && session.role !== "trader") return null;
     return session;
   } catch {
     return null;
   }
+}
+
+function hasAdminRights(accountInfo) {
+  return String(accountInfo?.rights || "").trim().toLowerCase() === "admin";
 }
 
 function storeSession(session) {
