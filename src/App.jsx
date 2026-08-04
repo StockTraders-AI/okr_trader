@@ -39,12 +39,13 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-
   useEffect(() => {
     if (!user && path !== "/") {
       navigate("/", setPath, true);
     }
-  }, [path, user]);  useEffect(() => {
+  }, [path, user]);
+
+  useEffect(() => {
     if (!user) return;
 
     if (user.role === "admin" && path !== ADMIN_PATH) {
