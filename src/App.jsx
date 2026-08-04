@@ -8,6 +8,7 @@ import TargetsView from "./components/TargetsView.jsx";
 import TeamView from "./components/TeamView.jsx";
 import { pageStyle } from "./data/theme.js";
 import { buildSessionUser, loginWithApi } from "./services/authApi.js";
+import { loadOkrState, saveOkrState } from "./services/okrStore.js";
 import { buildTraders, createBlankTrader, rebuildMonth } from "./utils/okr.js";
 
 const YEAR = 2026;
@@ -24,11 +25,30 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [detailTab, setDetailTab] = useState("score");
   const [showModal, setShowModal] = useState(false);
+  const [storeError, setStoreError] = useState("");
 
   const selectedTrader = useMemo(() => traders.find((trader) => trader.id === selectedId), [traders, selectedId]);
   const isAdmin = user?.role === "admin";
   const isAdminRoute = path === ADMIN_PATH;
   const isTraderRoute = path === TRADER_PATH;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadOkrState(YEAR, month)
+      .then((state) => {
+        if (cancelled) return;
+        setTraders(state.traders);
+        setStoreError("");
+      })
+      .catch((error) => {
+        if (!cancelled) setStoreError(error?.message || "Khong tai duoc du lieu DB.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [month]);
 
   useEffect(() => {
     function handlePopState() {
@@ -38,12 +58,6 @@ export default function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
-
-  useEffect(() => {
-    if (!user && path !== "/") {
-      navigate("/", setPath, true);
-    }
-  }, [path, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -62,6 +76,19 @@ export default function App() {
     const authResult = await loginWithApi(username, password);
     const sessionUser = buildSessionUser(authResult, username, traders);
 
+    if (path === ADMIN_PATH) {
+      setUser({ ...sessionUser, role: "admin", initials: sessionUser.initials || "AD" });
+      setView("team");
+      setSelectedId(null);
+      navigate(ADMIN_PATH, setPath, true);
+      return;
+    }
+
+    if (path === TRADER_PATH) {
+      loginAsTrader(username, sessionUser);
+      return;
+    }
+
     if (sessionUser.role === "admin") {
       setUser(sessionUser);
       setView("team");
@@ -70,12 +97,16 @@ export default function App() {
       return;
     }
 
+    loginAsTrader(username, sessionUser);
+  }
+
+  function loginAsTrader(username, sessionUser) {
     if (sessionUser.traderId) {
-      setUser(sessionUser);
+      setUser({ ...sessionUser, role: "trader" });
       setSelectedId(sessionUser.traderId);
       setView("detail");
       setDetailTab("score");
-      navigate(TRADER_PATH, setPath);
+      navigate(TRADER_PATH, setPath, true);
       return;
     }
 
@@ -86,17 +117,18 @@ export default function App() {
       initials: sessionUser.initials || newTrader.initials,
     };
 
-    setTraders((current) => [...current, trader]);
-    setUser({ ...sessionUser, traderId: trader.id, name: trader.name, initials: trader.initials });
+    const nextTraders = [...traders, trader];
+    setTraders(nextTraders);
+    persistTraders(nextTraders);
+    setUser({ ...sessionUser, role: "trader", traderId: trader.id, name: trader.name, initials: trader.initials });
     setSelectedId(trader.id);
     setView("detail");
     setDetailTab("score");
-    navigate(TRADER_PATH, setPath);
+    navigate(TRADER_PATH, setPath, true);
   }
 
   function handleMonth(nextMonth) {
     setMonth(nextMonth);
-    setTraders((current) => current.map((trader) => rebuildMonth(trader, YEAR, nextMonth)));
   }
 
   function handleLogout() {
@@ -115,7 +147,7 @@ export default function App() {
   }
 
   function updateRate(traderId, key, value) {
-    setTraders((current) => current.map((trader) => {
+    commitTraders((current) => current.map((trader) => {
       if (trader.id !== traderId) return trader;
       const rates = { ...trader.rates, [key]: value };
       return rebuildMonth({ ...trader, rates }, YEAR, month);
@@ -123,7 +155,7 @@ export default function App() {
   }
 
   function updateDay(traderId, rowIndex, key, value) {
-    setTraders((current) => current.map((trader) => {
+    commitTraders((current) => current.map((trader) => {
       if (trader.id !== traderId) return trader;
       const days = trader.days.map((day, index) => index === rowIndex ? { ...day, [key]: value } : day);
       return { ...trader, days };
@@ -131,9 +163,23 @@ export default function App() {
   }
 
   function createTrader(phone) {
-    setTraders((current) => [...current, createBlankTrader(phone, YEAR, month)]);
+    commitTraders((current) => [...current, createBlankTrader(phone, YEAR, month)]);
     setShowModal(false);
     setView("team");
+  }
+
+  function commitTraders(updater) {
+    setTraders((current) => {
+      const nextTraders = typeof updater === "function" ? updater(current) : updater;
+      persistTraders(nextTraders);
+      return nextTraders;
+    });
+  }
+
+  function persistTraders(nextTraders) {
+    saveOkrState(YEAR, month, nextTraders)
+      .then(() => setStoreError(""))
+      .catch((error) => setStoreError(error?.message || "Khong luu duoc du lieu DB."));
   }
 
   if (!user) {
@@ -150,6 +196,7 @@ export default function App() {
   return (
     <div style={pageStyle}>
       <Header user={user} month={month} year={YEAR} onMonth={handleMonth} onLogout={handleLogout} />
+      {storeError && <div style={{ maxWidth: 1180, margin: "0 auto 12px", padding: "0 20px", color: "#FF2D55", fontSize: 12 }}>{storeError}</div>}
 
       {isAdmin && isAdminRoute && (
         <>

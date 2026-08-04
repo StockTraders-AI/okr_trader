@@ -32,6 +32,14 @@ HOST=0.0.0.0 PORT=5175 LOGIN_API_URL=https://stocktraders.vn/service/data/getUse
 
 ## Routes
 
-- `/`: man hinh dang nhap
-- `/himlamst`: man hinh admin public shortcut, khong can dang nhap
-- `/trader`: man hinh trader public shortcut, khong can dang nhap
+- `/`: man hinh dang nhap mac dinh
+- `/himlamst`: link dang nhap admin; login API thanh cong se vao UI admin
+- `/trader`: link dang nhap trader; login API thanh cong se vao UI trader
+
+## Database
+
+Server luu du lieu OKR vao file `data/okr-db.json`.
+
+- `GET /api/okr-state?year=2026&month=7`: doc du lieu thang
+- `PUT /api/okr-state`: luu danh sach trader/ngay cong/chi tieu hien tai
+- `data/okr-db.json` la du lieu runtime va dang nam trong `.gitignore`
