@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AddTraderModal from "./components/AddTraderModal.jsx";
 import DetailView from "./components/DetailView.jsx";
 import Header from "./components/Header.jsx";
@@ -7,12 +7,16 @@ import MainNav from "./components/MainNav.jsx";
 import TargetsView from "./components/TargetsView.jsx";
 import TeamView from "./components/TeamView.jsx";
 import { pageStyle } from "./data/theme.js";
+import { buildSessionUser, loginWithApi } from "./services/authApi.js";
 import { buildTraders, createBlankTrader, rebuildMonth } from "./utils/okr.js";
 
 const YEAR = 2026;
 const DEFAULT_MONTH = 7;
+const ADMIN_PATH = "/himlams";
+const TRADER_PATH = "/trader";
 
 export default function App() {
+  const [path, setPath] = useState(() => normalizePath(window.location.pathname));
   const [month, setMonth] = useState(DEFAULT_MONTH);
   const [traders, setTraders] = useState(() => buildTraders(YEAR, DEFAULT_MONTH));
   const [user, setUser] = useState(null);
@@ -23,23 +27,70 @@ export default function App() {
 
   const selectedTrader = useMemo(() => traders.find((trader) => trader.id === selectedId), [traders, selectedId]);
   const isAdmin = user?.role === "admin";
+  const isAdminRoute = path === ADMIN_PATH;
+  const isTraderRoute = path === TRADER_PATH;
 
-  function handleLogin(username, password) {
-    if (username === "admin" && password === "123") {
-      setUser({ role: "admin", name: "Quản trị", initials: "AD" });
-      setView("team");
-      setSelectedId(null);
-      return true;
+  useEffect(() => {
+    function handlePopState() {
+      setPath(normalizePath(window.location.pathname));
     }
 
-    const trader = traders.find((item) => item.user === username && item.password === password);
-    if (!trader) return false;
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
-    setUser({ role: "trader", traderId: trader.id, name: trader.name, initials: trader.initials });
+
+  useEffect(() => {
+    if (!user && path !== "/") {
+      navigate("/", setPath, true);
+    }
+  }, [path, user]);  useEffect(() => {
+    if (!user) return;
+
+    if (user.role === "admin" && path !== ADMIN_PATH) {
+      navigate(ADMIN_PATH, setPath, true);
+      return;
+    }
+
+    if (user.role === "trader" && path !== TRADER_PATH) {
+      navigate(TRADER_PATH, setPath, true);
+    }
+  }, [path, user]);
+
+  async function handleLogin(username, password) {
+    const authResult = await loginWithApi(username, password);
+    const sessionUser = buildSessionUser(authResult, username, traders);
+
+    if (sessionUser.role === "admin") {
+      setUser(sessionUser);
+      setView("team");
+      setSelectedId(null);
+      navigate(ADMIN_PATH, setPath);
+      return;
+    }
+
+    if (sessionUser.traderId) {
+      setUser(sessionUser);
+      setSelectedId(sessionUser.traderId);
+      setView("detail");
+      setDetailTab("score");
+      navigate(TRADER_PATH, setPath);
+      return;
+    }
+
+    const newTrader = createBlankTrader(username, YEAR, month);
+    const trader = {
+      ...newTrader,
+      name: sessionUser.name || newTrader.name,
+      initials: sessionUser.initials || newTrader.initials,
+    };
+
+    setTraders((current) => [...current, trader]);
+    setUser({ ...sessionUser, traderId: trader.id, name: trader.name, initials: trader.initials });
     setSelectedId(trader.id);
     setView("detail");
     setDetailTab("score");
-    return true;
+    navigate(TRADER_PATH, setPath);
   }
 
   function handleMonth(nextMonth) {
@@ -53,6 +104,7 @@ export default function App() {
     setSelectedId(null);
     setDetailTab("score");
     setShowModal(false);
+    navigate("/", setPath);
   }
 
   function openTrader(id) {
@@ -87,7 +139,7 @@ export default function App() {
     return (
       <div style={pageStyle}>
         <Header logoOnly />
-        <LoginView traders={traders} onLogin={handleLogin} />
+        <LoginView onLogin={handleLogin} />
       </div>
     );
   }
@@ -97,18 +149,38 @@ export default function App() {
   return (
     <div style={pageStyle}>
       <Header user={user} month={month} year={YEAR} onMonth={handleMonth} onLogout={handleLogout} />
-      <MainNav view={view} isAdmin={isAdmin} onView={setView} onAddTrader={() => setShowModal(true)} />
 
-      {user.role === "trader" && lockedTrader && (
+      {isAdmin && isAdminRoute && (
+        <>
+          <MainNav view={view} isAdmin={isAdmin} onView={setView} onAddTrader={() => setShowModal(true)} />
+          {view === "team" && <TeamView traders={traders} year={YEAR} month={month} onOpen={openTrader} />}
+          {view === "targets" && <TargetsView traders={traders} year={YEAR} month={month} onRate={updateRate} />}
+          {view === "detail" && lockedTrader && (
+            <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin onBack={() => setView("team")} onTab={setDetailTab} onDay={updateDay} />
+          )}
+          {showModal && <AddTraderModal traders={traders} onClose={() => setShowModal(false)} onCreate={createTrader} />}
+        </>
+      )}
+
+      {user.role === "trader" && isTraderRoute && lockedTrader && (
         <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin={false} onTab={setDetailTab} onDay={updateDay} />
       )}
-
-      {isAdmin && view === "team" && <TeamView traders={traders} year={YEAR} month={month} onOpen={openTrader} />}
-      {isAdmin && view === "targets" && <TargetsView traders={traders} year={YEAR} month={month} onRate={updateRate} />}
-      {isAdmin && view === "detail" && lockedTrader && (
-        <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin onBack={() => setView("team")} onTab={setDetailTab} onDay={updateDay} />
-      )}
-      {showModal && <AddTraderModal traders={traders} onClose={() => setShowModal(false)} onCreate={createTrader} />}
     </div>
   );
+}
+
+function normalizePath(pathname) {
+  if (pathname === ADMIN_PATH || pathname === TRADER_PATH) return pathname;
+  return "/";
+}
+
+function navigate(nextPath, setPath, replace = false) {
+  if (window.location.pathname === nextPath) {
+    setPath(normalizePath(nextPath));
+    return;
+  }
+
+  const method = replace ? "replaceState" : "pushState";
+  window.history[method](null, "", nextPath);
+  setPath(normalizePath(nextPath));
 }
