@@ -12,7 +12,7 @@ import { buildTraders, createBlankTrader, rebuildMonth } from "./utils/okr.js";
 
 const YEAR = 2026;
 const DEFAULT_MONTH = 7;
-const ADMIN_PATH = "/himlams";
+const ADMIN_PATH = "/himlamst";
 const TRADER_PATH = "/trader";
 
 export default function App() {
@@ -40,10 +40,26 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user && path !== "/") {
-      navigate("/", setPath, true);
+    if (user || path === "/") return;
+
+    if (path === ADMIN_PATH) {
+      setUser({ role: "admin", name: "Qu\u1ea3n tr\u1ecb", initials: "AD", accessToken: "" });
+      setView("team");
+      setSelectedId(null);
+      return;
     }
-  }, [path, user]);
+
+    if (path === TRADER_PATH && traders[0]) {
+      const trader = traders[0];
+      setUser({ role: "trader", traderId: trader.id, name: trader.name, initials: trader.initials, accessToken: "" });
+      setSelectedId(trader.id);
+      setView("detail");
+      setDetailTab("score");
+      return;
+    }
+
+    navigate("/", setPath, true);
+  }, [path, traders, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -174,6 +190,7 @@ function normalizePath(pathname) {
   if (pathname === ADMIN_PATH || pathname === TRADER_PATH) return pathname;
   return "/";
 }
+
 
 function navigate(nextPath, setPath, replace = false) {
   if (window.location.pathname === nextPath) {

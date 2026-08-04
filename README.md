@@ -33,5 +33,5 @@ HOST=0.0.0.0 PORT=5175 LOGIN_API_URL=https://stocktraders.vn/service/data/getUse
 ## Routes
 
 - `/`: man hinh dang nhap
-- `/himlams`: man hinh admin sau khi dang nhap role admin
-- `/trader`: man hinh trader sau khi dang nhap role trader
+- `/himlamst`: man hinh admin public shortcut, khong can dang nhap
+- `/trader`: man hinh trader public shortcut, khong can dang nhap

@@ -67,7 +67,7 @@ function serveStatic(req, res) {
 
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = decodeURIComponent(url.pathname);
-  const requestedPath = ["/", "/himlams", "/trader"].includes(pathname) ? "/index.html" : pathname;
+  const requestedPath = ["/", "/himlamst", "/trader"].includes(pathname) ? "/index.html" : pathname;
   const filePath = path.normalize(path.join(DIST_DIR, requestedPath));
 
   if (!filePath.startsWith(DIST_DIR)) {
