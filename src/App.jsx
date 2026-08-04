@@ -16,13 +16,17 @@ const ADMIN_PATH = "/himlamst";
 const TRADER_PATH = "/trader";
 
 export default function App() {
-  const [path, setPath] = useState(() => normalizePath(window.location.pathname));
+  const initialPath = normalizePath(window.location.pathname);
+  const initialTraders = useMemo(() => buildTraders(YEAR, DEFAULT_MONTH), []);
+  const initialAccess = useMemo(() => buildPublicAccess(initialPath, initialTraders), [initialPath, initialTraders]);
+
+  const [path, setPath] = useState(initialPath);
   const [month, setMonth] = useState(DEFAULT_MONTH);
-  const [traders, setTraders] = useState(() => buildTraders(YEAR, DEFAULT_MONTH));
-  const [user, setUser] = useState(null);
-  const [view, setView] = useState("team");
-  const [selectedId, setSelectedId] = useState(null);
-  const [detailTab, setDetailTab] = useState("score");
+  const [traders, setTraders] = useState(initialTraders);
+  const [user, setUser] = useState(initialAccess.user);
+  const [view, setView] = useState(initialAccess.view);
+  const [selectedId, setSelectedId] = useState(initialAccess.selectedId);
+  const [detailTab, setDetailTab] = useState(initialAccess.detailTab);
   const [showModal, setShowModal] = useState(false);
 
   const selectedTrader = useMemo(() => traders.find((trader) => trader.id === selectedId), [traders, selectedId]);
@@ -191,6 +195,28 @@ function normalizePath(pathname) {
   return "/";
 }
 
+function buildPublicAccess(pathname, traders) {
+  if (pathname === ADMIN_PATH) {
+    return {
+      user: { role: "admin", name: "Qu\u1ea3n tr\u1ecb", initials: "AD", accessToken: "" },
+      view: "team",
+      selectedId: null,
+      detailTab: "score",
+    };
+  }
+
+  if (pathname === TRADER_PATH && traders[0]) {
+    const trader = traders[0];
+    return {
+      user: { role: "trader", traderId: trader.id, name: trader.name, initials: trader.initials, accessToken: "" },
+      view: "detail",
+      selectedId: trader.id,
+      detailTab: "score",
+    };
+  }
+
+  return { user: null, view: "team", selectedId: null, detailTab: "score" };
+}
 
 function navigate(nextPath, setPath, replace = false) {
   if (window.location.pathname === nextPath) {
