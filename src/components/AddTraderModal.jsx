@@ -55,7 +55,7 @@ export default function AddTraderModal({ traders, onClose, onCreate }) {
           <input
             className="fld"
             autoComplete="off"
-            placeholder="stock@vn"
+            placeholder="0912 345 678"
             maxLength={64}
             autoFocus
             value={account}
