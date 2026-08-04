@@ -16,22 +16,17 @@ const ADMIN_PATH = "/himlamst";
 const TRADER_PATH = "/trader";
 
 export default function App() {
-  const [initialState] = useState(createInitialState);
-
-  const [path, setPath] = useState(initialState.path);
+  const [path, setPath] = useState(() => normalizePath(window.location.pathname));
   const [month, setMonth] = useState(DEFAULT_MONTH);
-  const [traders, setTraders] = useState(initialState.traders);
-  const [user, setUser] = useState(initialState.user);
-  const [view, setView] = useState(initialState.view);
-  const [selectedId, setSelectedId] = useState(initialState.selectedId);
-  const [detailTab, setDetailTab] = useState(initialState.detailTab);
+  const [traders, setTraders] = useState(() => buildTraders(YEAR, DEFAULT_MONTH));
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState("team");
+  const [selectedId, setSelectedId] = useState(null);
+  const [detailTab, setDetailTab] = useState("score");
   const [showModal, setShowModal] = useState(false);
 
-  const publicAccess = useMemo(() => buildPublicAccess(path, traders), [path, traders]);
-  const activeUser = user || publicAccess.user;
-  const activeSelectedId = activeUser?.role === "trader" ? activeUser.traderId : selectedId;
-  const selectedTrader = useMemo(() => traders.find((trader) => trader.id === activeSelectedId), [traders, activeSelectedId]);
-  const isAdmin = activeUser?.role === "admin";
+  const selectedTrader = useMemo(() => traders.find((trader) => trader.id === selectedId), [traders, selectedId]);
+  const isAdmin = user?.role === "admin";
   const isAdminRoute = path === ADMIN_PATH;
   const isTraderRoute = path === TRADER_PATH;
 
@@ -45,26 +40,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (user || path === "/") return;
-
-    if (path === ADMIN_PATH) {
-      setUser({ role: "admin", name: "Qu\u1ea3n tr\u1ecb", initials: "AD", accessToken: "" });
-      setView("team");
-      setSelectedId(null);
-      return;
+    if (!user && path !== "/") {
+      navigate("/", setPath, true);
     }
-
-    if (path === TRADER_PATH && traders[0]) {
-      const trader = traders[0];
-      setUser({ role: "trader", traderId: trader.id, name: trader.name, initials: trader.initials, accessToken: "" });
-      setSelectedId(trader.id);
-      setView("detail");
-      setDetailTab("score");
-      return;
-    }
-
-    navigate("/", setPath, true);
-  }, [path, traders, user]);
+  }, [path, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -157,7 +136,7 @@ export default function App() {
     setView("team");
   }
 
-  if (!activeUser) {
+  if (!user) {
     return (
       <div style={pageStyle}>
         <Header logoOnly />
@@ -166,11 +145,11 @@ export default function App() {
     );
   }
 
-  const lockedTrader = activeUser.role === "trader" ? traders.find((trader) => trader.id === activeUser.traderId) : selectedTrader;
+  const lockedTrader = user.role === "trader" ? traders.find((trader) => trader.id === user.traderId) : selectedTrader;
 
   return (
     <div style={pageStyle}>
-      <Header user={activeUser} month={month} year={YEAR} onMonth={handleMonth} onLogout={handleLogout} />
+      <Header user={user} month={month} year={YEAR} onMonth={handleMonth} onLogout={handleLogout} />
 
       {isAdmin && isAdminRoute && (
         <>
@@ -184,45 +163,16 @@ export default function App() {
         </>
       )}
 
-      {activeUser.role === "trader" && isTraderRoute && lockedTrader && (
+      {user.role === "trader" && isTraderRoute && lockedTrader && (
         <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin={false} onTab={setDetailTab} onDay={updateDay} />
       )}
     </div>
   );
 }
 
-function createInitialState() {
-  const path = normalizePath(window.location.pathname);
-  const traders = buildTraders(YEAR, DEFAULT_MONTH);
-  return { path, traders, ...buildPublicAccess(path, traders) };
-}
-
 function normalizePath(pathname) {
   if (pathname === ADMIN_PATH || pathname === TRADER_PATH) return pathname;
   return "/";
-}
-
-function buildPublicAccess(pathname, traders) {
-  if (pathname === ADMIN_PATH) {
-    return {
-      user: { role: "admin", name: "Qu\u1ea3n tr\u1ecb", initials: "AD", accessToken: "" },
-      view: "team",
-      selectedId: null,
-      detailTab: "score",
-    };
-  }
-
-  if (pathname === TRADER_PATH && traders[0]) {
-    const trader = traders[0];
-    return {
-      user: { role: "trader", traderId: trader.id, name: trader.name, initials: trader.initials, accessToken: "" },
-      view: "detail",
-      selectedId: trader.id,
-      detailTab: "score",
-    };
-  }
-
-  return { user: null, view: "team", selectedId: null, detailTab: "score" };
 }
 
 function navigate(nextPath, setPath, replace = false) {
