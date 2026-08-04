@@ -15,14 +15,15 @@ const YEAR = 2026;
 const DEFAULT_MONTH = 7;
 const ADMIN_PATH = "/himlamst";
 const TRADER_PATH = "/trader";
+const SESSION_KEY = "okr-trader-session";
 
 export default function App() {
   const [path, setPath] = useState(() => normalizePath(window.location.pathname));
   const [month, setMonth] = useState(DEFAULT_MONTH);
   const [traders, setTraders] = useState(() => buildTraders(YEAR, DEFAULT_MONTH));
-  const [user, setUser] = useState(null);
-  const [view, setView] = useState("team");
-  const [selectedId, setSelectedId] = useState(null);
+  const [user, setUser] = useState(() => readStoredSession(normalizePath(window.location.pathname)));
+  const [view, setView] = useState(() => readStoredSession(normalizePath(window.location.pathname))?.role === "trader" ? "detail" : "team");
+  const [selectedId, setSelectedId] = useState(() => readStoredSession(normalizePath(window.location.pathname))?.traderId || null);
   const [detailTab, setDetailTab] = useState("score");
   const [showModal, setShowModal] = useState(false);
   const [storeError, setStoreError] = useState("");
@@ -77,7 +78,9 @@ export default function App() {
     const sessionUser = buildSessionUser(authResult, username, traders);
 
     if (path === ADMIN_PATH) {
-      setUser({ ...sessionUser, role: "admin", initials: sessionUser.initials || "AD" });
+      const nextUser = { ...sessionUser, role: "admin", initials: sessionUser.initials || "AD" };
+      storeSession(nextUser);
+      setUser(nextUser);
       setView("team");
       setSelectedId(null);
       navigate(ADMIN_PATH, setPath, true);
@@ -90,6 +93,7 @@ export default function App() {
     }
 
     if (sessionUser.role === "admin") {
+      storeSession(sessionUser);
       setUser(sessionUser);
       setView("team");
       setSelectedId(null);
@@ -102,7 +106,9 @@ export default function App() {
 
   function loginAsTrader(username, sessionUser) {
     if (sessionUser.traderId) {
-      setUser({ ...sessionUser, role: "trader" });
+      const nextUser = { ...sessionUser, role: "trader" };
+      storeSession(nextUser);
+      setUser(nextUser);
       setSelectedId(sessionUser.traderId);
       setView("detail");
       setDetailTab("score");
@@ -120,7 +126,10 @@ export default function App() {
     const nextTraders = [...traders, trader];
     setTraders(nextTraders);
     persistTraders(nextTraders);
-    setUser({ ...sessionUser, role: "trader", traderId: trader.id, name: trader.name, initials: trader.initials });
+
+    const nextUser = { ...sessionUser, role: "trader", traderId: trader.id, name: trader.name, initials: trader.initials };
+    storeSession(nextUser);
+    setUser(nextUser);
     setSelectedId(trader.id);
     setView("detail");
     setDetailTab("score");
@@ -132,6 +141,7 @@ export default function App() {
   }
 
   function handleLogout() {
+    clearStoredSession();
     setUser(null);
     setView("team");
     setSelectedId(null);
@@ -215,6 +225,26 @@ export default function App() {
       )}
     </div>
   );
+}
+
+function readStoredSession(path) {
+  try {
+    const session = JSON.parse(window.localStorage.getItem(SESSION_KEY) || "null");
+    if (!session?.role) return null;
+    if (path === ADMIN_PATH && session.role !== "admin") return null;
+    if (path === TRADER_PATH && session.role !== "trader") return null;
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+function storeSession(session) {
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function clearStoredSession() {
+  window.localStorage.removeItem(SESSION_KEY);
 }
 
 function normalizePath(pathname) {
