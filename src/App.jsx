@@ -172,8 +172,17 @@ export default function App() {
     }));
   }
 
-  function createTrader(phone) {
-    commitTraders((current) => [...current, createBlankTrader(phone, YEAR, month)]);
+  function createTrader(accountInfo) {
+    const userName = accountInfo.userName;
+    const trader = {
+      ...createBlankTrader(userName, YEAR, month),
+      name: userName,
+      user: userName,
+      initials: userName.slice(0, 2).toUpperCase(),
+      accountInfo,
+    };
+
+    commitTraders((current) => [...current, trader]);
     setShowModal(false);
     setView("team");
   }

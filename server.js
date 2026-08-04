@@ -13,6 +13,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, "okr.db");
 const LEGACY_DB_FILE = path.join(DATA_DIR, "okr-db.json");
 const LOGIN_API_URL = process.env.LOGIN_API_URL || "https://stocktraders.vn/service/data/getUserLogin";
+const CHECK_ACCOUNT_API_URL = process.env.CHECK_ACCOUNT_API_URL || "https://stocktraders.vn/service/data/getCheckAcount";
 const sqlReady = initSqlJs({
   locateFile: (filename) => path.join(__dirname, "node_modules", "sql.js", "dist", filename),
 });
@@ -67,6 +68,42 @@ async function handleLogin(req, res) {
   return true;
 }
 
+async function handleCheckAccount(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  if (req.method !== "POST" || url.pathname !== "/api/check-account") return false;
+
+  try {
+    const payload = await readJsonRequest(req);
+    const account = String(payload?.account || "").trim();
+
+    if (!account) {
+      sendJson(res, 400, { error: "Account is required" });
+      return true;
+    }
+
+    const upstream = await fetch(CHECK_ACCOUNT_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        CheckAcountRequest: { account },
+      }),
+    });
+
+    const text = await upstream.text();
+    res.writeHead(upstream.status, {
+      "Content-Type": upstream.headers.get("content-type") || "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    });
+    res.end(text);
+  } catch (error) {
+    sendJson(res, 502, { error: error?.message || "Check account proxy failed" });
+  }
+
+  return true;
+}
 async function handleOkrState(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   if (url.pathname !== "/api/okr-state") return false;
@@ -228,6 +265,7 @@ function serveStatic(req, res) {
 
 createServer(async (req, res) => {
   if (await handleLogin(req, res)) return;
+  if (await handleCheckAccount(req, res)) return;
   if (await handleOkrState(req, res)) return;
 
   if (req.method === "GET" || req.method === "HEAD") {
