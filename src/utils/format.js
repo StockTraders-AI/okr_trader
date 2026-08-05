@@ -1,7 +1,7 @@
 export const numberFormatter = new Intl.NumberFormat("vi-VN");
 
 export function money(value) {
-  return `${numberFormatter.format(Math.max(0, Math.round(value)))}đ`;
+  return `${numberFormatter.format(Math.max(0, Math.round(value)))}\u0111`;
 }
 
 export function pad(value) {
@@ -25,8 +25,8 @@ export function slug(value) {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D")
+    .replace(/\u0111/g, "d")
+    .replace(/\u0110/g, "D")
     .toLowerCase()
     .replace(/\s+/g, "");
 }

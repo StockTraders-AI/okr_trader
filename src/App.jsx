@@ -242,7 +242,7 @@ export default function App() {
   const deleteTarget = traders.find((trader) => trader.id === confirmDeleteId);
   return (
     <div style={pageStyle}>
-      <Header user={user} month={month} year={YEAR} subtitle={lockedTrader?.policyText || DEFAULT_POLICY_TEXT} onMonth={handleMonth} onLogout={handleLogout} onHelp={() => setShowGuide(true)} />
+      <Header user={user} month={month} year={YEAR} subtitle={lockedTrader?.policyText || DEFAULT_POLICY_TEXT} canEditSubtitle={isAdmin && isAdminRoute && view === "detail" && !!lockedTrader} onSubtitleSave={(value) => lockedTrader && updatePolicyText(lockedTrader.id, value)} onMonth={handleMonth} onLogout={handleLogout} onHelp={() => setShowGuide(true)} />
       {storeError && <div style={{ maxWidth: 1180, margin: "0 auto 12px", padding: "0 20px", color: "#FF2D55", fontSize: 12 }}>{storeError}</div>}
 
       {isAdmin && isAdminRoute && (
@@ -251,7 +251,7 @@ export default function App() {
           {view === "team" && <TeamView traders={traders} year={YEAR} month={month} onOpen={openTrader} onDelete={setConfirmDeleteId} />}
           {view === "targets" && <TargetsView traders={traders} year={YEAR} month={month} onRate={updateRate} />}
           {view === "detail" && lockedTrader && (
-            <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin onBack={() => setView("team")} onTab={setDetailTab} onDay={updateDay} onPolicyText={updatePolicyText} />
+            <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin onBack={() => setView("team")} onTab={setDetailTab} onDay={updateDay} />
           )}
           {showModal && <AddTraderModal traders={traders} onClose={() => setShowModal(false)} onCreate={createTrader} />}
           {confirmDeleteId && <ConfirmDeleteModal trader={deleteTarget} onClose={() => setConfirmDeleteId(null)} onConfirm={() => deleteTrader(confirmDeleteId)} />}

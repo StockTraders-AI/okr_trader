@@ -1,6 +1,9 @@
+import { Trash2 } from "lucide-react";
 import { bigNum, T } from "../data/theme.js";
 import { money, numberFormatter as nf } from "../utils/format.js";
 import { actualFor, fineOf, monthlyTarget as mTarget, overall, reportDone, statusOf, totals, workingDays } from "../utils/okr.js";
+
+const TABLE_COLUMNS = ["Trader", "Điểm OKR", "Lời mời", "Kết bạn", "Cộng đồng", "Gr riêng", "Chân dung", "Report", "Phạt", ""];
 
 export default function TeamView({ traders, year, month, onOpen, onDelete }) {
   const list = [...traders].sort((a, b) => overall(b, year, month) - overall(a, year, month));
@@ -33,7 +36,7 @@ export default function TeamView({ traders, year, month, onOpen, onDelete }) {
       <div className="card">
         <div style={{ overflowX: "auto" }}>
           <table style={{ minWidth: 820 }}>
-            <thead><tr>{["Trader", "Điểm OKR", "Lời mời", "Kết bạn", "Cộng đồng", "Gr riêng", "Chân dung", "Report", "Phạt", ""].map((column, index) => <th key={column || index} className={index === 0 ? "l" : ""}>{column}</th>)}</tr></thead>
+            <thead><tr>{TABLE_COLUMNS.map((column, index) => <th key={column || index} className={index === 0 ? "l" : ""}>{column}</th>)}</tr></thead>
             <tbody>
               {list.map((trader) => {
                 const cachedTotals = totals(trader);
@@ -49,9 +52,7 @@ export default function TeamView({ traders, year, month, onOpen, onDelete }) {
                     <td><span style={{ fontFamily: T.mono, color: reports >= workDays ? T.green : reports >= workDays * 0.9 ? T.purpleLt : T.red, fontWeight: 600 }}>{reports}/{workDays}</span></td>
                     <td><span style={{ fontFamily: T.mono, color: fine ? T.red : T.dim }}>{fine ? money(fine) : "—"}</span></td>
                     <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                      <button className="del" title="Xoá trader" onClick={(event) => { event.stopPropagation(); onDelete(trader.id); }} type="button">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" /><path d="M10 11v6M14 11v6" /></svg>
-                      </button>
+                      <button className="del" title="Xóa trader" onClick={(event) => { event.stopPropagation(); onDelete(trader.id); }} type="button"><Trash2 size={15} strokeWidth={2} /></button>
                       <span className="chev" style={{ marginLeft: 4 }}>›</span>
                     </td>
                   </tr>

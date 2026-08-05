@@ -103,9 +103,12 @@ input.cell[type=number] { -moz-appearance: textfield; }
 .btn-danger { background: linear-gradient(135deg,#FF2D55,#ff5a7a); color: #fff; border: none; border-radius: 11px; padding: 12px; font-family: var(--body); font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(255,45,85,.35); transition: filter .15s, transform .1s; }
 .btn-danger:hover { filter: brightness(1.06); }
 .btn-danger:active { transform: translateY(1px); }
-.policybox { width: 100%; margin-top: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--body); font-size: 13px; line-height: 1.5; padding: 10px 12px; resize: vertical; min-height: 48px; }
-.policybox:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 2px rgba(124,58,237,.25); }
-.policy-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
-.policy-save { background: var(--purpleFaint); color: var(--purpleLt); border: 1px solid rgba(124,58,237,.4); border-radius: 10px; padding: 7px 16px; font-family: var(--body); font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s; }
-.policy-save:hover:not(:disabled) { background: rgba(124,58,237,.22); }
-.policy-save:disabled { cursor: default; opacity: .45; }
+.subtitle-row { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; }
+.subtitle-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subtitle-edit { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--dim); border: none; border-radius: 6px; padding: 0; cursor: pointer; transition: all .15s; flex: 0 0 auto; }
+.subtitle-edit:hover { color: var(--purpleLt); background: rgba(124,58,237,.14); }
+.subtitle-inline-edit { display: flex; align-items: center; gap: 6px; max-width: min(560px, 100%); margin-top: 4px; }
+.subtitle-input { flex: 1; min-width: 180px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--body); font-size: 12.5px; padding: 6px 8px; }
+.subtitle-input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 2px rgba(124,58,237,.22); }
+.subtitle-action { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; background: var(--purpleFaint); color: var(--purpleLt); border: 1px solid rgba(124,58,237,.4); border-radius: 8px; padding: 0; cursor: pointer; transition: all .15s; }
+.subtitle-action:hover { background: rgba(124,58,237,.22); }

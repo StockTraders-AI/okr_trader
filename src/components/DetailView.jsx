@@ -1,18 +1,10 @@
-import { useEffect, useState } from "react";
 import ScoreView from "./ScoreView.jsx";
 import LogView from "./LogView.jsx";
-import { DEFAULT_POLICY_TEXT, overall, statusOf } from "../utils/okr.js";
+import { overall, statusOf } from "../utils/okr.js";
 
-export default function DetailView({ trader: tr, year, month, tab, isAdmin, onBack, onTab, onDay, onPolicyText }) {
+export default function DetailView({ trader: tr, year, month, tab, isAdmin, onBack, onTab, onDay }) {
   const score = overall(tr, year, month);
   const status = statusOf(score);
-  const policyText = tr.policyText || DEFAULT_POLICY_TEXT;
-  const [policyDraft, setPolicyDraft] = useState(policyText);
-  const isPolicyDirty = policyDraft !== policyText;
-
-  useEffect(() => {
-    setPolicyDraft(policyText);
-  }, [policyText, tr.id]);
 
   return (
     <>
@@ -26,23 +18,6 @@ export default function DetailView({ trader: tr, year, month, tab, isAdmin, onBa
           <button className={"tab" + (tab === "log" ? " active" : "")} onClick={() => onTab("log")} type="button">{`Nh\u1eadt k\u00fd h\u1eb1ng ng\u00e0y`}</button>
         </nav>
       </div>
-      {isAdmin && onPolicyText && (
-        <div className="card" style={{ marginTop: -4 }}>
-          <label className="flab" htmlFor={`policy-${tr.id}`}>{`D\u00f2ng ch\u00ednh s\u00e1ch hi\u1ec3n th\u1ecb cho trader n\u00e0y`}</label>
-          <textarea
-            id={`policy-${tr.id}`}
-            className="policybox"
-            value={policyDraft}
-            onChange={(event) => setPolicyDraft(event.target.value)}
-            rows={2}
-          />
-          <div className="policy-actions">
-            <span className="note">{isPolicyDirty ? `Ch\u01b0a l\u01b0u thay \u0111\u1ed5i` : `\u0110ang hi\u1ec3n th\u1ecb n\u1ed9i dung \u0111\u00e3 l\u01b0u`}</span>
-            <button className="policy-save" disabled={!isPolicyDirty} onClick={() => onPolicyText(tr.id, policyDraft)} type="button">{`L\u01b0u`}</button>
-          </div>
-          <div className="note" style={{ marginTop: 8 }}>{`N\u1ed9i dung n\u00e0y s\u1ebd thay d\u00f2ng m\u00f4 t\u1ea3 d\u01b0\u1edbi ti\u00eau \u0111\u1ec1 khi trader \u0111\u0103ng nh\u1eadp ho\u1eb7c khi admin m\u1edf chi ti\u1ebft trader.`}</div>
-        </div>
-      )}
       {tab === "score" ? <ScoreView trader={tr} year={year} month={month} /> : <LogView trader={tr} year={year} month={month} onDay={onDay} />}
     </>
   );
