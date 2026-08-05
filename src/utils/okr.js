@@ -37,7 +37,21 @@ const CP1252_BYTES = {
   0x017E: 0x9E,
   0x0178: 0x9F,
 };
+const SEEDED_TRADER_NAMES = {
+  t1: "Minh Anh",
+  t2: "Thu H\u00e0",
+  t3: "Qu\u1ed1c Huy",
+  t4: "B\u1ea3o Tr\u00e2n",
+  t5: "\u0110\u1ee9c Khoa",
+};
 
+const SEEDED_TRADER_NAMES_BY_INITIALS = {
+  MA: "Minh Anh",
+  TH: "Thu H\u00e0",
+  QH: "Qu\u1ed1c Huy",
+  BT: "B\u1ea3o Tr\u00e2n",
+  DK: "\u0110\u1ee9c Khoa",
+};
 export function cleanText(value) {
   if (typeof value !== "string" || !/(Ã|Ä|Â|Æ|áº|á»|â€)/.test(value)) return value;
 
@@ -155,7 +169,7 @@ export function createBlankTrader(phone, year, month) {
 }
 
 export function normalizeTrader(trader) {
-  const name = cleanText(trader.name);
+  const name = repairKnownTraderName(trader, cleanText(trader.name));
   const policyText = cleanText(trader.policyText);
 
   return {
@@ -237,6 +251,20 @@ export function rebuildMonth(trader, year, month) {
   };
 }
 
+function repairKnownTraderName(trader, name) {
+  if (SEEDED_TRADER_NAMES[trader.id]) return SEEDED_TRADER_NAMES[trader.id];
+
+  const traderInitials = String(cleanText(trader.initials) || "").toUpperCase();
+  if (hasLostCharacters(name) && SEEDED_TRADER_NAMES_BY_INITIALS[traderInitials]) {
+    return SEEDED_TRADER_NAMES_BY_INITIALS[traderInitials];
+  }
+
+  return name;
+}
+
+function hasLostCharacters(value) {
+  return typeof value === "string" && /[\uFFFD?]/.test(value);
+}
 function jitter(value, index) {
   return Math.max(0, Math.round(value * (0.85 + ((index * 13 + 7) % 7) / 20)));
 }
