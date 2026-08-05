@@ -32,7 +32,7 @@ export function effectiveDays(year, month) {
   }, 0);
 }
 
-export function genDays(year, month, rates, performance = 1, missedReports = 0) {
+export function genDays(year, month, rates, performance = 1, _missedReports = 0) {
   const days = daysOfMonth(year, month);
   const reportableDays = days.filter((day) => day.type !== "off").length;
   const monthlyPosts = Math.round(((rates.post || 0) * performance * effectiveDays(year, month)) / 5);
@@ -52,7 +52,7 @@ export function genDays(year, month, rates, performance = 1, missedReports = 0) 
 
     if (day.type !== "off") {
       row.post = Math.round(((reportIndex + 1) * monthlyPosts) / reportableDays) > Math.round((reportIndex * monthlyPosts) / reportableDays) ? 1 : 0;
-      row.report = missedReports > 0 && reportIndex % Math.max(3, Math.round(reportableDays / missedReports)) === 2 ? 0 : 1;
+      row.report = 0;
       reportIndex += 1;
     } else {
       row.post = 0;
@@ -113,7 +113,7 @@ export function normalizeTrader(trader) {
       ALL_KRS.forEach((kr) => {
         if (kr.key !== "report" && nextDay[kr.key] == null) nextDay[kr.key] = 0;
       });
-      if (nextDay.report == null) nextDay.report = nextDay.type === "off" ? 0 : 1;
+      if (nextDay.report == null) nextDay.report = 0;
       return nextDay;
     }),
   };
