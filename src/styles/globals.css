@@ -105,3 +105,7 @@ input.cell[type=number] { -moz-appearance: textfield; }
 .btn-danger:active { transform: translateY(1px); }
 .policybox { width: 100%; margin-top: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: var(--body); font-size: 13px; line-height: 1.5; padding: 10px 12px; resize: vertical; min-height: 48px; }
 .policybox:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 2px rgba(124,58,237,.25); }
+.policy-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
+.policy-save { background: var(--purpleFaint); color: var(--purpleLt); border: 1px solid rgba(124,58,237,.4); border-radius: 10px; padding: 7px 16px; font-family: var(--body); font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s; }
+.policy-save:hover:not(:disabled) { background: rgba(124,58,237,.22); }
+.policy-save:disabled { cursor: default; opacity: .45; }
