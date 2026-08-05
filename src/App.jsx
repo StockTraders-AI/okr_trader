@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import AddTraderModal from "./components/AddTraderModal.jsx";
+import ConfirmDeleteModal from "./components/ConfirmDeleteModal.jsx";
 import DetailView from "./components/DetailView.jsx";
 import Header from "./components/Header.jsx";
+import GuideModal from "./components/GuideModal.jsx";
 import LoginView from "./components/LoginView.jsx";
 import MainNav from "./components/MainNav.jsx";
 import TargetsView from "./components/TargetsView.jsx";
@@ -27,6 +29,8 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(() => readStoredSession(normalizePath(window.location.pathname))?.traderId || null);
   const [detailTab, setDetailTab] = useState("score");
   const [showModal, setShowModal] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [showGuide, setShowGuide] = useState(false);
   const [storeError, setStoreError] = useState("");
 
   const selectedTrader = useMemo(() => traders.find((trader) => trader.id === selectedId), [traders, selectedId]);
@@ -154,8 +158,9 @@ export default function App() {
     setSelectedId(null);
     setDetailTab("score");
     setShowModal(false);
-    navigate("/", setPath);
-  }
+    setConfirmDeleteId(null);
+    setShowGuide(false);
+    navigate("/", setPath);  }
 
   function openTrader(id) {
     setSelectedId(id);
@@ -194,6 +199,16 @@ export default function App() {
     setView("team");
   }
 
+  function deleteTrader(id) {
+    commitTraders((current) => current.filter((trader) => trader.id !== id));
+    if (selectedId === id) {
+      setSelectedId(null);
+      setView("team");
+      setDetailTab("score");
+    }
+    setConfirmDeleteId(null);
+  }
+
   function commitTraders(updater) {
     setTraders((current) => {
       const nextTraders = typeof updater === "function" ? updater(current) : updater;
@@ -218,23 +233,26 @@ export default function App() {
   }
 
   const lockedTrader = user.role === "trader" ? traders.find((trader) => trader.id === user.traderId) : selectedTrader;
-
+  const deleteTarget = traders.find((trader) => trader.id === confirmDeleteId);
   return (
     <div style={pageStyle}>
-      <Header user={user} month={month} year={YEAR} onMonth={handleMonth} onLogout={handleLogout} />
+      <Header user={user} month={month} year={YEAR} onMonth={handleMonth} onLogout={handleLogout} onHelp={() => setShowGuide(true)} />
       {storeError && <div style={{ maxWidth: 1180, margin: "0 auto 12px", padding: "0 20px", color: "#FF2D55", fontSize: 12 }}>{storeError}</div>}
 
       {isAdmin && isAdminRoute && (
         <>
           <MainNav view={view} isAdmin={isAdmin} onView={setView} onAddTrader={() => setShowModal(true)} />
-          {view === "team" && <TeamView traders={traders} year={YEAR} month={month} onOpen={openTrader} />}
+          {view === "team" && <TeamView traders={traders} year={YEAR} month={month} onOpen={openTrader} onDelete={setConfirmDeleteId} />}
           {view === "targets" && <TargetsView traders={traders} year={YEAR} month={month} onRate={updateRate} />}
           {view === "detail" && lockedTrader && (
             <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin onBack={() => setView("team")} onTab={setDetailTab} onDay={updateDay} />
           )}
           {showModal && <AddTraderModal traders={traders} onClose={() => setShowModal(false)} onCreate={createTrader} />}
+          {confirmDeleteId && <ConfirmDeleteModal trader={deleteTarget} onClose={() => setConfirmDeleteId(null)} onConfirm={() => deleteTrader(confirmDeleteId)} />}
         </>
       )}
+
+      {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
 
       {user.role === "trader" && isTraderRoute && lockedTrader && (
         <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin={false} onTab={setDetailTab} onDay={updateDay} />

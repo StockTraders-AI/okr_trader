@@ -2,7 +2,7 @@ import { bigNum, T } from "../data/theme.js";
 import { money, numberFormatter as nf } from "../utils/format.js";
 import { actualFor, fineOf, monthlyTarget as mTarget, overall, reportDone, statusOf, totals, workingDays } from "../utils/okr.js";
 
-export default function TeamView({ traders, year, month, onOpen }) {
+export default function TeamView({ traders, year, month, onOpen, onDelete }) {
   const list = [...traders].sort((a, b) => overall(b, year, month) - overall(a, year, month));
   const teamAvg = traders.reduce((a, trader) => a + overall(trader, year, month), 0) / traders.length;
   const teamFine = traders.reduce((a, trader) => a + fineOf(trader, year, month), 0);
@@ -48,7 +48,12 @@ export default function TeamView({ traders, year, month, onOpen }) {
                     {cell(trader, "invite", cachedTotals)}{cell(trader, "friend", cachedTotals)}{cell(trader, "comm", cachedTotals)}{cell(trader, "priv", cachedTotals)}{cell(trader, "portrait", cachedTotals)}
                     <td><span style={{ fontFamily: T.mono, color: reports >= workDays ? T.green : reports >= workDays * 0.9 ? T.purpleLt : T.red, fontWeight: 600 }}>{reports}/{workDays}</span></td>
                     <td><span style={{ fontFamily: T.mono, color: fine ? T.red : T.dim }}>{fine ? money(fine) : "—"}</span></td>
-                    <td className="chev">›</td>
+                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                      <button className="del" title="Xoá trader" onClick={(event) => { event.stopPropagation(); onDelete(trader.id); }} type="button">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" /><path d="M10 11v6M14 11v6" /></svg>
+                      </button>
+                      <span className="chev" style={{ marginLeft: 4 }}>›</span>
+                    </td>
                   </tr>
                 );
               })}

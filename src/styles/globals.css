@@ -95,3 +95,11 @@ input.cell[type=number] { -moz-appearance: textfield; }
 .btn-primary:active { transform: translateY(1px); }
 .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 11px; padding: 12px; font-family: var(--body); font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
 .btn-ghost:hover { border-color: var(--purpleLt); color: var(--purpleLt); }
+.del { background: transparent; border: none; color: var(--dim); cursor: pointer; padding: 5px 7px; border-radius: 7px; line-height: 0; transition: all .12s; vertical-align: middle; }
+.del:hover { color: var(--red); background: rgba(255,45,85,.12); }
+.helpbtn { background: rgba(124,58,237,.14); color: var(--purpleLt); border: 1px solid rgba(124,58,237,.4); border-radius: 10px; padding: 7px 12px; font-family: var(--body); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.helpbtn:hover { background: rgba(124,58,237,.22); }
+.modal.guide { max-width: 640px; max-height: 84vh; overflow-y: auto; }
+.btn-danger { background: linear-gradient(135deg,#FF2D55,#ff5a7a); color: #fff; border: none; border-radius: 11px; padding: 12px; font-family: var(--body); font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(255,45,85,.35); transition: filter .15s, transform .1s; }
+.btn-danger:hover { filter: brightness(1.06); }
+.btn-danger:active { transform: translateY(1px); }

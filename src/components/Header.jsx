@@ -1,6 +1,6 @@
 import { LOGO, T, headerStyle } from "../data/theme.js";
 
-export default function Header({ user, month, year, onMonth, onLogout, logoOnly }) {
+export default function Header({ user, month, year, onMonth, onLogout, onHelp, logoOnly }) {
   return (
     <header style={headerStyle}>
       <img className="sq" src={LOGO} alt="OKR Trader" />
@@ -20,6 +20,7 @@ export default function Header({ user, month, year, onMonth, onLogout, logoOnly 
             {user.name}
             <span style={{ color: T.dim, fontWeight: 400 }}>&nbsp;· {user.role === "admin" ? "Admin" : "Trader"}</span>
           </span>
+          <button className="helpbtn" onClick={onHelp} title="Hướng dẫn sử dụng" type="button">? Hướng dẫn</button>
           <button className="back" onClick={onLogout} type="button">Đăng xuất</button>
         </div>
       )}
