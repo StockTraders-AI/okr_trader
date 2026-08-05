@@ -1,12 +1,13 @@
+import { DEFAULT_POLICY_TEXT } from "../utils/okr.js";
 import { LOGO, T, headerStyle } from "../data/theme.js";
 
-export default function Header({ user, month, year, onMonth, onLogout, onHelp, logoOnly }) {
+export default function Header({ user, month, year, onMonth, onLogout, onHelp, logoOnly, subtitle = DEFAULT_POLICY_TEXT }) {
   return (
     <header style={headerStyle}>
       <img className="sq" src={LOGO} alt="OKR Trader" />
       <div style={{ flex: 1, minWidth: 200 }}>
         <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>OKR Trader — Chăm sóc và chuyển đổi khách</h1>
-        <div style={{ fontSize: 12.5, color: T.dim, marginTop: 2 }}>Chính sách dành cho Trader được kiểm soát đặc biệt</div>
+        <div style={{ fontSize: 12.5, color: T.dim, marginTop: 2 }}>{subtitle || DEFAULT_POLICY_TEXT}</div>
       </div>
       {!logoOnly && user && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

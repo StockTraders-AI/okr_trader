@@ -6,6 +6,8 @@ import {
 } from "../data/okrConfig.js";
 import { formatPhone, initials, iso, slug } from "./format.js";
 
+export const DEFAULT_POLICY_TEXT = "Ch\u00ednh s\u00e1ch d\u00e0nh cho Trader \u0111\u01b0\u1ee3c ki\u1ec3m so\u00e1t \u0111\u1eb7c bi\u1ec7t";
+
 export function daysOfMonth(year, month) {
   const out = [];
   const date = new Date(year, month, 1);
@@ -86,6 +88,7 @@ export function buildTraders(year, month) {
     rates: profile.rates,
     performance: profile.performance,
     missedReports: profile.missedReports,
+    policyText: DEFAULT_POLICY_TEXT,
     days: genDays(year, month, profile.rates, profile.performance, profile.missedReports),
   }));
 }
@@ -100,6 +103,7 @@ export function createBlankTrader(phone, year, month) {
     rates: { ...BASE_RATES },
     performance: 0,
     missedReports: 0,
+    policyText: DEFAULT_POLICY_TEXT,
     days: genDays(year, month, BASE_RATES, 0, 0),
   };
 }
@@ -108,6 +112,7 @@ export function normalizeTrader(trader) {
   return {
     ...trader,
     rates: trader.rates || {},
+    policyText: typeof trader.policyText === "string" ? trader.policyText : DEFAULT_POLICY_TEXT,
     days: (trader.days || []).map((day) => {
       const nextDay = { ...day };
       ALL_KRS.forEach((kr) => {

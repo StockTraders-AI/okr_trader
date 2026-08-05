@@ -12,13 +12,14 @@ import { pageStyle } from "./data/theme.js";
 import { buildSessionUser, loginWithApi } from "./services/authApi.js";
 import { checkAccount } from "./services/checkAccountApi.js";
 import { loadOkrState, saveOkrState } from "./services/okrStore.js";
-import { buildTraders, createBlankTrader, normalizeTrader, rebuildMonth } from "./utils/okr.js";
+import { buildTraders, createBlankTrader, DEFAULT_POLICY_TEXT, normalizeTrader, rebuildMonth } from "./utils/okr.js";
 
 const YEAR = 2026;
 const DEFAULT_MONTH = 7;
 const ADMIN_PATH = "/himlamst";
 const TRADER_PATH = "/trader";
 const SESSION_KEY = "okr-trader-session";
+const ADMIN_PREVIEW = import.meta.env.VITE_ADMIN_PREVIEW === "1";
 
 export default function App() {
   const [path, setPath] = useState(() => normalizePath(window.location.pathname));
@@ -160,7 +161,8 @@ export default function App() {
     setShowModal(false);
     setConfirmDeleteId(null);
     setShowGuide(false);
-    navigate("/", setPath);  }
+    navigate("/", setPath);
+  }
 
   function openTrader(id) {
     setSelectedId(id);
@@ -174,6 +176,10 @@ export default function App() {
       const rates = { ...trader.rates, [key]: value };
       return rebuildMonth({ ...trader, rates }, YEAR, month);
     }));
+  }
+
+  function updatePolicyText(traderId, value) {
+    commitTraders((current) => current.map((trader) => trader.id === traderId ? { ...trader, policyText: value } : trader));
   }
 
   function updateDay(traderId, rowIndex, key, value) {
@@ -236,7 +242,7 @@ export default function App() {
   const deleteTarget = traders.find((trader) => trader.id === confirmDeleteId);
   return (
     <div style={pageStyle}>
-      <Header user={user} month={month} year={YEAR} onMonth={handleMonth} onLogout={handleLogout} onHelp={() => setShowGuide(true)} />
+      <Header user={user} month={month} year={YEAR} subtitle={lockedTrader?.policyText || DEFAULT_POLICY_TEXT} onMonth={handleMonth} onLogout={handleLogout} onHelp={() => setShowGuide(true)} />
       {storeError && <div style={{ maxWidth: 1180, margin: "0 auto 12px", padding: "0 20px", color: "#FF2D55", fontSize: 12 }}>{storeError}</div>}
 
       {isAdmin && isAdminRoute && (
@@ -245,7 +251,7 @@ export default function App() {
           {view === "team" && <TeamView traders={traders} year={YEAR} month={month} onOpen={openTrader} onDelete={setConfirmDeleteId} />}
           {view === "targets" && <TargetsView traders={traders} year={YEAR} month={month} onRate={updateRate} />}
           {view === "detail" && lockedTrader && (
-            <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin onBack={() => setView("team")} onTab={setDetailTab} onDay={updateDay} />
+            <DetailView trader={lockedTrader} year={YEAR} month={month} tab={detailTab} isAdmin onBack={() => setView("team")} onTab={setDetailTab} onDay={updateDay} onPolicyText={updatePolicyText} />
           )}
           {showModal && <AddTraderModal traders={traders} onClose={() => setShowModal(false)} onCreate={createTrader} />}
           {confirmDeleteId && <ConfirmDeleteModal trader={deleteTarget} onClose={() => setConfirmDeleteId(null)} onConfirm={() => deleteTrader(confirmDeleteId)} />}
@@ -264,17 +270,22 @@ export default function App() {
 function readStoredSession(path) {
   try {
     const session = JSON.parse(window.localStorage.getItem(SESSION_KEY) || "null");
-    if (!session?.role) return null;
+    if (!session?.role) return previewAdminSession(path);
     if (session.role === "admin" && !hasAdminRights(session.accountInfo)) {
       clearStoredSession();
-      return null;
+      return previewAdminSession(path);
     }
-    if (path === ADMIN_PATH && session.role !== "admin") return null;
+    if (path === ADMIN_PATH && session.role !== "admin") return previewAdminSession(path);
     if (path === TRADER_PATH && session.role !== "trader") return null;
     return session;
   } catch {
-    return null;
+    return previewAdminSession(path);
   }
+}
+
+function previewAdminSession(path) {
+  if (!ADMIN_PREVIEW || path !== ADMIN_PATH) return null;
+  return { role: "admin", name: "Preview Admin", initials: "AD", accountInfo: { rights: "Admin" }, preview: true };
 }
 
 function hasAdminRights(accountInfo) {
