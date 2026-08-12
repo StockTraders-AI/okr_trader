@@ -245,9 +245,15 @@ export function fineOf(trader, year, month) {
 }
 
 export function rebuildMonth(trader, year, month) {
+  const existingDays = new Map((trader.days || []).map((day) => [day.date, day]));
+  const days = genDays(year, month, trader.rates, trader.performance, trader.missedReports).map((day) => {
+    const existing = existingDays.get(day.date);
+    return existing ? { ...day, ...existing, type: day.type } : day;
+  });
+
   return {
     ...trader,
-    days: genDays(year, month, trader.rates, trader.performance, trader.missedReports),
+    days,
   };
 }
 

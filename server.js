@@ -14,6 +14,7 @@ const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, "okr.db");
 const LEGACY_DB_FILE = path.join(DATA_DIR, "okr-db.json");
 const LOGIN_API_URL = process.env.LOGIN_API_URL || "https://stocktraders.vn/service/data/getUserLogin";
 const CHECK_ACCOUNT_API_URL = process.env.CHECK_ACCOUNT_API_URL || "https://stocktraders.vn/service/data/getCheckAcount";
+const DAY_KEYS = new Set(["invite", "friend", "comm", "priv", "portrait", "post", "port", "nav", "report"]);
 const sqlReady = initSqlJs({
   locateFile: (filename) => path.join(__dirname, "node_modules", "sql.js", "dist", filename),
 });
@@ -136,8 +137,13 @@ async function handleOkrState(req, res) {
         return true;
       }
 
-      const state = { year, month, traders };
       const db = await openDb();
+      const existingState = readMonthState(db, year, month);
+      const state = {
+        year,
+        month,
+        traders: mergeExistingDayValues(existingState.traders, traders),
+      };
       writeMonthState(db, state);
       saveDb(db);
       sendJson(res, 200, { ok: true, ...state });
@@ -152,6 +158,52 @@ async function handleOkrState(req, res) {
   return true;
 }
 
+async function handleOkrDay(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  if (req.method !== "PATCH" || url.pathname !== "/api/okr-day") return false;
+
+  try {
+    const payload = await readJsonRequest(req);
+    const year = Number(payload?.year);
+    const month = Number(payload?.month);
+    const traderId = String(payload?.traderId || "");
+    const date = String(payload?.date || "");
+    const key = String(payload?.key || "");
+    const value = Number(payload?.value) || 0;
+
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 0 || month > 11 || !traderId || !date || !DAY_KEYS.has(key)) {
+      sendJson(res, 400, { error: "Invalid OKR day payload" });
+      return true;
+    }
+
+    const db = await openDb();
+    const state = readMonthState(db, year, month);
+    const trader = state.traders.find((item) => item.id === traderId);
+
+    if (!trader) {
+      saveDb(db);
+      sendJson(res, 404, { error: "Trader not found" });
+      return true;
+    }
+
+    const day = (trader.days || []).find((item) => item.date === date);
+
+    if (!day) {
+      saveDb(db);
+      sendJson(res, 404, { error: "Day not found" });
+      return true;
+    }
+
+    day[key] = value;
+    writeMonthState(db, state);
+    saveDb(db);
+    sendJson(res, 200, { ok: true, year, month, traderId, date, key, value });
+  } catch (error) {
+    sendJson(res, 400, { error: error?.message || "Cannot save OKR day" });
+  }
+
+  return true;
+}
 async function openDb() {
   mkdirSync(DATA_DIR, { recursive: true });
   const SQL = await sqlReady;
@@ -211,6 +263,32 @@ function writeMonthState(db, { year, month, traders }) {
   );
 }
 
+function normalizeUpdateStamp(value) {
+  const stamp = Number(value);
+  return Number.isFinite(stamp) && stamp > 0 ? stamp : Date.now() * 1000;
+}
+function mergeExistingDayValues(existingTraders, incomingTraders) {
+  const existingByTraderId = new Map((existingTraders || []).map((trader) => [trader.id, trader]));
+
+  return incomingTraders.map((incomingTrader) => {
+    const existingTrader = existingByTraderId.get(incomingTrader.id);
+    if (!existingTrader?.days?.length || !incomingTrader?.days?.length) return incomingTrader;
+
+    const existingDaysByDate = new Map(existingTrader.days.map((day) => [day.date, day]));
+    const days = incomingTrader.days.map((incomingDay) => {
+      const existingDay = existingDaysByDate.get(incomingDay.date);
+      if (!existingDay) return incomingDay;
+
+      const mergedDay = { ...incomingDay };
+      DAY_KEYS.forEach((key) => {
+        if (existingDay[key] !== undefined && existingDay[key] !== null) mergedDay[key] = existingDay[key];
+      });
+      return mergedDay;
+    });
+
+    return { ...incomingTrader, days };
+  });
+}
 function migrateLegacyJson(db) {
   try {
     const legacy = JSON.parse(readFileSync(LEGACY_DB_FILE, "utf8"));
@@ -266,6 +344,7 @@ function serveStatic(req, res) {
 createServer(async (req, res) => {
   if (await handleLogin(req, res)) return;
   if (await handleCheckAccount(req, res)) return;
+  if (await handleOkrDay(req, res)) return;
   if (await handleOkrState(req, res)) return;
 
   if (req.method === "GET" || req.method === "HEAD") {

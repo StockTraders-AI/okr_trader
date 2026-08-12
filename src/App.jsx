@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AddTraderModal from "./components/AddTraderModal.jsx";
 import ConfirmDeleteModal from "./components/ConfirmDeleteModal.jsx";
 import DetailView from "./components/DetailView.jsx";
@@ -11,7 +11,7 @@ import TeamView from "./components/TeamView.jsx";
 import { pageStyle } from "./data/theme.js";
 import { buildSessionUser, loginWithApi } from "./services/authApi.js";
 import { checkAccount } from "./services/checkAccountApi.js";
-import { loadOkrState, saveOkrState } from "./services/okrStore.js";
+import { loadOkrState, saveOkrDay, saveOkrState } from "./services/okrStore.js";
 import { buildTraders, createBlankTrader, DEFAULT_POLICY_TEXT, normalizeTrader, rebuildMonth } from "./utils/okr.js";
 
 const YEAR = 2026;
@@ -33,6 +33,7 @@ export default function App() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [showGuide, setShowGuide] = useState(false);
   const [storeError, setStoreError] = useState("");
+  const saveSequence = useRef(0);
 
   const selectedTrader = useMemo(() => traders.find((trader) => trader.id === selectedId), [traders, selectedId]);
   const isAdmin = user?.role === "admin";
@@ -183,11 +184,24 @@ export default function App() {
   }
 
   function updateDay(traderId, rowIndex, key, value) {
-    commitTraders((current) => current.map((trader) => {
+    const targetTrader = traders.find((trader) => trader.id === traderId);
+    const targetDate = targetTrader?.days?.[rowIndex]?.date;
+
+    setTraders((current) => current.map((trader) => {
       if (trader.id !== traderId) return trader;
       const days = trader.days.map((day, index) => index === rowIndex ? { ...day, [key]: value } : day);
       return { ...trader, days };
     }));
+
+    if (!targetDate) {
+      setStoreError("Khong xac dinh duoc ngay can luu.");
+      return;
+    }
+
+    const updatedAt = Date.now() * 1000 + (++saveSequence.current);
+    saveOkrDay(YEAR, month, traderId, targetDate, key, value, updatedAt)
+      .then(() => setStoreError(""))
+      .catch((error) => setStoreError(error?.message || "Khong luu duoc du lieu DB."));
   }
 
   function createTrader(accountInfo) {

@@ -20,6 +20,18 @@ export async function saveOkrState(year, month, traders) {
   return payload;
 }
 
+export async function saveOkrDay(year, month, traderId, date, key, value, updatedAt) {
+  const response = await fetch("/api/okr-day", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ year, month, traderId, date, key, value, updatedAt }),
+  });
+
+  const payload = await readJson(response);
+  if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+  return payload;
+}
+
 async function readJson(response) {
   const text = await response.text();
   if (!text) return {};
