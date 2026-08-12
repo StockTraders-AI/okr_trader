@@ -18,12 +18,15 @@ export async function loginWithApi(username, password) {
   }
 
   const reply = payload?.UserLoginReply || payload;
+  
   const token = reply?.access_token || reply?.accessToken || "";
   const message = reply?.messsage || reply?.message || "Login failed";
   const status = Number(reply?.status);
   const codeName = String(reply?.codeReply?.codeName || "").toUpperCase();
+  const codeID = String(reply?.codeReply?.codeID || "").toUpperCase();
+  const ok = status === 1 || codeID === "S0000";
 
-  if (!token || status === 2 || codeName === "ERROR") {
+  if (!ok || status === 2 || codeName === "ERROR") {
     throw new Error(message || "Login failed");
   }
 
