@@ -43,18 +43,31 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    loadOkrState(YEAR, month)
-      .then((state) => {
-        if (cancelled) return;
-        setTraders(state.traders.map(normalizeTrader));
-        setStoreError("");
-      })
-      .catch((error) => {
-        if (!cancelled) setStoreError(error?.message || "Khong tai duoc du lieu DB.");
-      });
+    function reload() {
+      loadOkrState(YEAR, month)
+        .then((state) => {
+          if (cancelled) return;
+          setTraders(state.traders.map(normalizeTrader));
+          setStoreError("");
+        })
+        .catch((error) => {
+          if (!cancelled) setStoreError(error?.message || "Khong tai duoc du lieu DB.");
+        });
+    }
+
+    reload();
+
+    function handleVisibility() {
+      if (document.visibilityState === "visible") reload();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", reload);
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", reload);
     };
   }, [month]);
 
