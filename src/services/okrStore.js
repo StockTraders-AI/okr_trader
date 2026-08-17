@@ -8,11 +8,11 @@ export async function loadOkrState(year, month) {
   return payload;
 }
 
-export async function saveOkrState(year, month, traders) {
-  const response = await fetch("/api/okr-state", {
-    method: "PUT",
+export async function saveOkrDay(year, month, traderId, date, key, value, updatedAt) {
+  const response = await fetch("/api/okr-day", {
+    method: "PATCH",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ year, month, traders }),
+    body: JSON.stringify({ year, month, traderId, date, key, value, updatedAt }),
   });
 
   const payload = await readJson(response);
@@ -20,11 +20,47 @@ export async function saveOkrState(year, month, traders) {
   return payload;
 }
 
-export async function saveOkrDay(year, month, traderId, date, key, value, updatedAt) {
-  const response = await fetch("/api/okr-day", {
+export async function saveTraderRate(year, month, traderId, rateKey, value) {
+  const response = await fetch("/api/okr-trader", {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ year, month, traderId, date, key, value, updatedAt }),
+    body: JSON.stringify({ year, month, traderId, field: "rate", rateKey, value }),
+  });
+
+  const payload = await readJson(response);
+  if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+  return payload;
+}
+
+export async function saveTraderField(year, month, traderId, field, value) {
+  const response = await fetch("/api/okr-trader", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ year, month, traderId, field, value }),
+  });
+
+  const payload = await readJson(response);
+  if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+  return payload;
+}
+
+export async function createOkrTrader(year, month, trader) {
+  const response = await fetch("/api/okr-trader", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ year, month, trader }),
+  });
+
+  const payload = await readJson(response);
+  if (!response.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+  return payload;
+}
+
+export async function deleteOkrTrader(year, month, traderId) {
+  const response = await fetch("/api/okr-trader", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ year, month, traderId }),
   });
 
   const payload = await readJson(response);

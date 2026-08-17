@@ -11,7 +11,7 @@ import TeamView from "./components/TeamView.jsx";
 import { pageStyle } from "./data/theme.js";
 import { buildSessionUser, loginWithApi } from "./services/authApi.js";
 import { checkAccount } from "./services/checkAccountApi.js";
-import { loadOkrState, saveOkrDay, saveOkrState } from "./services/okrStore.js";
+import { createOkrTrader, deleteOkrTrader, loadOkrState, saveOkrDay, saveTraderField, saveTraderRate } from "./services/okrStore.js";
 import { buildTraders, createBlankTrader, DEFAULT_POLICY_TEXT, normalizeTrader, rebuildMonth } from "./utils/okr.js";
 
 const YEAR = 2026;
@@ -136,9 +136,10 @@ export default function App() {
       initials: sessionUser.initials || newTrader.initials,
     };
 
-    const nextTraders = [...traders, trader];
-    setTraders(nextTraders);
-    persistTraders(nextTraders);
+    setTraders((current) => [...current, trader]);
+    createOkrTrader(YEAR, month, trader)
+      .then(() => setStoreError(""))
+      .catch((error) => setStoreError(error?.message || "Khong luu duoc du lieu DB."));
 
     const nextUser = { ...sessionUser, role: "trader", traderId: trader.id, name: trader.name, initials: trader.initials };
     storeSession(nextUser);
@@ -172,15 +173,23 @@ export default function App() {
   }
 
   function updateRate(traderId, key, value) {
-    commitTraders((current) => current.map((trader) => {
+    setTraders((current) => current.map((trader) => {
       if (trader.id !== traderId) return trader;
       const rates = { ...trader.rates, [key]: value };
       return rebuildMonth({ ...trader, rates }, YEAR, month);
     }));
+
+    saveTraderRate(YEAR, month, traderId, key, value)
+      .then(() => setStoreError(""))
+      .catch((error) => setStoreError(error?.message || "Khong luu duoc du lieu DB."));
   }
 
   function updatePolicyText(traderId, value) {
-    commitTraders((current) => current.map((trader) => trader.id === traderId ? { ...trader, policyText: value } : trader));
+    setTraders((current) => current.map((trader) => trader.id === traderId ? { ...trader, policyText: value } : trader));
+
+    saveTraderField(YEAR, month, traderId, "policyText", value)
+      .then(() => setStoreError(""))
+      .catch((error) => setStoreError(error?.message || "Khong luu duoc du lieu DB."));
   }
 
   function updateDay(traderId, rowIndex, key, value) {
@@ -214,33 +223,26 @@ export default function App() {
       accountInfo,
     };
 
-    commitTraders((current) => [...current, trader]);
+    setTraders((current) => [...current, trader]);
+    createOkrTrader(YEAR, month, trader)
+      .then(() => setStoreError(""))
+      .catch((error) => setStoreError(error?.message || "Khong luu duoc du lieu DB."));
     setShowModal(false);
     setView("team");
   }
 
   function deleteTrader(id) {
-    commitTraders((current) => current.filter((trader) => trader.id !== id));
+    setTraders((current) => current.filter((trader) => trader.id !== id));
+    deleteOkrTrader(YEAR, month, id)
+      .then(() => setStoreError(""))
+      .catch((error) => setStoreError(error?.message || "Khong luu duoc du lieu DB."));
+
     if (selectedId === id) {
       setSelectedId(null);
       setView("team");
       setDetailTab("score");
     }
     setConfirmDeleteId(null);
-  }
-
-  function commitTraders(updater) {
-    setTraders((current) => {
-      const nextTraders = typeof updater === "function" ? updater(current) : updater;
-      persistTraders(nextTraders);
-      return nextTraders;
-    });
-  }
-
-  function persistTraders(nextTraders) {
-    saveOkrState(YEAR, month, nextTraders)
-      .then(() => setStoreError(""))
-      .catch((error) => setStoreError(error?.message || "Khong luu duoc du lieu DB."));
   }
 
   if (!user) {

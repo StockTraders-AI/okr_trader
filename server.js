@@ -15,9 +15,24 @@ const LEGACY_DB_FILE = path.join(DATA_DIR, "okr-db.json");
 const LOGIN_API_URL = process.env.LOGIN_API_URL || "https://stocktraders.vn/service/data/getUserLogin";
 const CHECK_ACCOUNT_API_URL = process.env.CHECK_ACCOUNT_API_URL || "https://stocktraders.vn/service/data/getCheckAcount";
 const DAY_KEYS = new Set(["invite", "friend", "comm", "priv", "portrait", "post", "port", "nav", "report"]);
+const RATE_KEYS = new Set(["invite", "friend", "comm", "priv", "portrait", "post", "port", "nav"]);
+const TRADER_FIELDS = new Set(["policyText", "performance", "missedReports"]);
 const sqlReady = initSqlJs({
   locateFile: (filename) => path.join(__dirname, "node_modules", "sql.js", "dist", filename),
 });
+
+// Every DB read-modify-write cycle runs through this queue so two requests
+// (e.g. an admin PUT and a trader PATCH) can never interleave their reads/writes
+// and silently overwrite each other.
+let dbQueue = Promise.resolve();
+function withDb(task) {
+  const run = dbQueue.then(task);
+  dbQueue = run.then(
+    () => {},
+    () => {},
+  );
+  return run;
+}
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -114,9 +129,12 @@ async function handleOkrState(req, res) {
     const month = Number(url.searchParams.get("month") || 7);
 
     try {
-      const db = await openDb();
-      const state = readMonthState(db, year, month);
-      saveDb(db);
+      const state = await withDb(async () => {
+        const db = await openDb();
+        const result = readMonthState(db, year, month);
+        saveDb(db);
+        return result;
+      });
       sendJson(res, 200, state);
     } catch (error) {
       sendJson(res, 500, { error: error?.message || "Cannot read OKR state" });
@@ -137,15 +155,18 @@ async function handleOkrState(req, res) {
         return true;
       }
 
-      const db = await openDb();
-      const existingState = readMonthState(db, year, month);
-      const state = {
-        year,
-        month,
-        traders: mergeExistingDayValues(existingState.traders, traders),
-      };
-      writeMonthState(db, state);
-      saveDb(db);
+      const state = await withDb(async () => {
+        const db = await openDb();
+        const existingState = readMonthState(db, year, month);
+        const nextState = {
+          year,
+          month,
+          traders: mergeExistingDayValues(existingState.traders, traders),
+        };
+        writeMonthState(db, nextState);
+        saveDb(db);
+        return nextState;
+      });
       sendJson(res, 200, { ok: true, ...state });
     } catch (error) {
       sendJson(res, 400, { error: error?.message || "Cannot save OKR state" });
@@ -176,30 +197,158 @@ async function handleOkrDay(req, res) {
       return true;
     }
 
-    const db = await openDb();
-    const state = readMonthState(db, year, month);
-    const trader = state.traders.find((item) => item.id === traderId);
+    const result = await withDb(async () => {
+      const db = await openDb();
+      const state = readMonthState(db, year, month);
+      const trader = state.traders.find((item) => item.id === traderId);
 
-    if (!trader) {
+      if (!trader) {
+        saveDb(db);
+        return { status: 404, body: { error: "Trader not found" } };
+      }
+
+      const day = (trader.days || []).find((item) => item.date === date);
+
+      if (!day) {
+        saveDb(db);
+        return { status: 404, body: { error: "Day not found" } };
+      }
+
+      day[key] = value;
+      writeMonthState(db, state);
       saveDb(db);
-      sendJson(res, 404, { error: "Trader not found" });
-      return true;
-    }
+      return { status: 200, body: { ok: true, year, month, traderId, date, key, value } };
+    });
 
-    const day = (trader.days || []).find((item) => item.date === date);
-
-    if (!day) {
-      saveDb(db);
-      sendJson(res, 404, { error: "Day not found" });
-      return true;
-    }
-
-    day[key] = value;
-    writeMonthState(db, state);
-    saveDb(db);
-    sendJson(res, 200, { ok: true, year, month, traderId, date, key, value });
+    sendJson(res, result.status, result.body);
   } catch (error) {
     sendJson(res, 400, { error: error?.message || "Cannot save OKR day" });
+  }
+
+  return true;
+}
+
+async function handleOkrTrader(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  if (url.pathname !== "/api/okr-trader") return false;
+
+  if (req.method === "PATCH") return handleOkrTraderPatch(req, res);
+  if (req.method === "POST") return handleOkrTraderCreate(req, res);
+  if (req.method === "DELETE") return handleOkrTraderDelete(req, res);
+
+  sendText(res, 405, "Method not allowed");
+  return true;
+}
+
+async function handleOkrTraderPatch(req, res) {
+  try {
+    const payload = await readJsonRequest(req);
+    const year = Number(payload?.year);
+    const month = Number(payload?.month);
+    const traderId = String(payload?.traderId || "");
+    const field = String(payload?.field || "");
+    const rateKey = String(payload?.rateKey || "");
+
+    const isRateEdit = field === "rate" && RATE_KEYS.has(rateKey);
+    const isFieldEdit = TRADER_FIELDS.has(field);
+
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 0 || month > 11 || !traderId || (!isRateEdit && !isFieldEdit)) {
+      sendJson(res, 400, { error: "Invalid OKR trader payload" });
+      return true;
+    }
+
+    const result = await withDb(async () => {
+      const db = await openDb();
+      const state = readMonthState(db, year, month);
+      const trader = state.traders.find((item) => item.id === traderId);
+
+      if (!trader) {
+        saveDb(db);
+        return { status: 404, body: { error: "Trader not found" } };
+      }
+
+      let value;
+      if (isRateEdit) {
+        value = Number(payload?.value) || 0;
+        trader.rates = { ...trader.rates, [rateKey]: value };
+      } else if (field === "policyText") {
+        value = String(payload?.value ?? "");
+        trader.policyText = value;
+      } else {
+        value = Number(payload?.value) || 0;
+        trader[field] = value;
+      }
+
+      writeMonthState(db, state);
+      saveDb(db);
+      return { status: 200, body: { ok: true, year, month, traderId, field, rateKey, value } };
+    });
+
+    sendJson(res, result.status, result.body);
+  } catch (error) {
+    sendJson(res, 400, { error: error?.message || "Cannot save OKR trader" });
+  }
+
+  return true;
+}
+
+async function handleOkrTraderCreate(req, res) {
+  try {
+    const payload = await readJsonRequest(req);
+    const year = Number(payload?.year);
+    const month = Number(payload?.month);
+    const trader = payload?.trader;
+
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 0 || month > 11 || !trader?.id || !Array.isArray(trader?.days)) {
+      sendJson(res, 400, { error: "Invalid OKR trader payload" });
+      return true;
+    }
+
+    const result = await withDb(async () => {
+      const db = await openDb();
+      const state = readMonthState(db, year, month);
+
+      if (!state.traders.some((item) => item.id === trader.id)) {
+        state.traders.push(trader);
+        writeMonthState(db, state);
+      }
+
+      saveDb(db);
+      return { status: 200, body: { ok: true, year, month, traders: state.traders } };
+    });
+
+    sendJson(res, result.status, result.body);
+  } catch (error) {
+    sendJson(res, 400, { error: error?.message || "Cannot create OKR trader" });
+  }
+
+  return true;
+}
+
+async function handleOkrTraderDelete(req, res) {
+  try {
+    const payload = await readJsonRequest(req);
+    const year = Number(payload?.year);
+    const month = Number(payload?.month);
+    const traderId = String(payload?.traderId || "");
+
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 0 || month > 11 || !traderId) {
+      sendJson(res, 400, { error: "Invalid OKR trader payload" });
+      return true;
+    }
+
+    const result = await withDb(async () => {
+      const db = await openDb();
+      const state = readMonthState(db, year, month);
+      state.traders = state.traders.filter((item) => item.id !== traderId);
+      writeMonthState(db, state);
+      saveDb(db);
+      return { status: 200, body: { ok: true, year, month, traders: state.traders } };
+    });
+
+    sendJson(res, result.status, result.body);
+  } catch (error) {
+    sendJson(res, 400, { error: error?.message || "Cannot delete OKR trader" });
   }
 
   return true;
@@ -345,6 +494,7 @@ createServer(async (req, res) => {
   if (await handleLogin(req, res)) return;
   if (await handleCheckAccount(req, res)) return;
   if (await handleOkrDay(req, res)) return;
+  if (await handleOkrTrader(req, res)) return;
   if (await handleOkrState(req, res)) return;
 
   if (req.method === "GET" || req.method === "HEAD") {
