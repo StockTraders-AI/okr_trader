@@ -214,8 +214,10 @@ async function handleOkrDay(req, res) {
         return { status: 404, body: { error: "Day not found" } };
       }
 
-      day[key] = value;
-      writeMonthState(db, state);
+      // Nguon su that duy nhat cho tung o ngay cong: 1 dong rieng trong bang
+      // okr_day_values. Khong dung read-modify-write ca khoi traders_json nua,
+      // nen thao tac nay khong the lam hong/mat du lieu cua trader/ngay khac.
+      writeDayValue(db, year, month, traderId, date, key, value);
       saveDb(db);
       return { status: 200, body: { ok: true, year, month, traderId, date, key, value } };
     });
@@ -368,11 +370,77 @@ async function openDb() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS okr_day_values (
+      year INTEGER NOT NULL,
+      month INTEGER NOT NULL,
+      trader_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value REAL NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (year, month, trader_id, date, key)
+    )
+  `);
+
   if (!existsSync(DB_FILE) && existsSync(LEGACY_DB_FILE)) {
     migrateLegacyJson(db);
   }
 
+  backfillDayValues(db);
+
   return db;
+}
+
+// Chuyen du lieu ngay cong dang nam trong traders_json (cach luu cu) sang
+// bang okr_day_values (cach luu moi, an toan hon) neu chua co. Chi chay 1
+// lan duy nhat - sau do bang da co du lieu nen kiem tra COUNT se nhanh va
+// bo qua ngay. Dung INSERT OR IGNORE nen khong bao gio ghi de len gia tri
+// da co san trong bang (vi du gia tri vua duoc trader sua qua PATCH moi).
+function backfillDayValues(db) {
+  const countStmt = db.prepare("SELECT COUNT(*) AS total FROM okr_day_values");
+  let total = 0;
+
+  try {
+    if (countStmt.step()) total = countStmt.getAsObject().total;
+  } finally {
+    countStmt.free();
+  }
+
+  if (total > 0) return;
+
+  const monthsStmt = db.prepare("SELECT year, month, traders_json FROM okr_months");
+  const rows = [];
+
+  try {
+    while (monthsStmt.step()) rows.push(monthsStmt.getAsObject());
+  } finally {
+    monthsStmt.free();
+  }
+
+  const nowIso = new Date().toISOString();
+
+  rows.forEach((row) => {
+    let traders;
+    try {
+      traders = JSON.parse(row.traders_json);
+    } catch {
+      return;
+    }
+
+    (traders || []).forEach((trader) => {
+      (trader.days || []).forEach((day) => {
+        DAY_KEYS.forEach((key) => {
+          if (day[key] === undefined || day[key] === null) return;
+          db.run(
+            `INSERT OR IGNORE INTO okr_day_values (year, month, trader_id, date, key, value, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [row.year, row.month, trader.id, day.date, key, Number(day[key]) || 0, nowIso],
+          );
+        });
+      });
+    });
+  });
 }
 
 function saveDb(db) {
@@ -383,25 +451,23 @@ function saveDb(db) {
 }
 
 function readMonthState(db, year, month) {
+  let traders = null;
   const stmt = db.prepare("SELECT traders_json FROM okr_months WHERE year = ? AND month = ?");
 
   try {
     stmt.bind([year, month]);
-
-    if (stmt.step()) {
-      return {
-        year,
-        month,
-        traders: JSON.parse(stmt.getAsObject().traders_json),
-      };
-    }
+    if (stmt.step()) traders = JSON.parse(stmt.getAsObject().traders_json);
   } finally {
     stmt.free();
   }
 
-  const state = { year, month, traders: buildTraders(year, month) };
-  writeMonthState(db, state);
-  return state;
+  if (!traders) {
+    traders = buildTraders(year, month);
+    writeMonthState(db, { year, month, traders });
+  }
+
+  applyDayValues(db, year, month, traders);
+  return { year, month, traders };
 }
 
 function writeMonthState(db, { year, month, traders }) {
@@ -410,6 +476,47 @@ function writeMonthState(db, { year, month, traders }) {
      VALUES (?, ?, ?, ?)`,
     [year, month, JSON.stringify(traders), new Date().toISOString()],
   );
+}
+
+function writeDayValue(db, year, month, traderId, date, key, value) {
+  db.run(
+    `INSERT OR REPLACE INTO okr_day_values (year, month, trader_id, date, key, value, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [year, month, traderId, date, key, value, new Date().toISOString()],
+  );
+}
+
+// Ghi de len mang "traders" (tai cho, khong tra ket qua moi) bang gia tri
+// that su dang co trong okr_day_values - nguon su that duy nhat cho tung o
+// ngay cong. Lam vay de cho du khoi traders_json (traders_json trong
+// okr_months) co bi cu/hong/reset vi ly do gi, GET van tra dung so lieu that.
+function applyDayValues(db, year, month, traders) {
+  const stmt = db.prepare("SELECT trader_id, date, key, value FROM okr_day_values WHERE year = ? AND month = ?");
+  const daysByTrader = new Map();
+
+  try {
+    stmt.bind([year, month]);
+
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      if (!daysByTrader.has(row.trader_id)) daysByTrader.set(row.trader_id, new Map());
+      const daysByDate = daysByTrader.get(row.trader_id);
+      if (!daysByDate.has(row.date)) daysByDate.set(row.date, {});
+      daysByDate.get(row.date)[row.key] = row.value;
+    }
+  } finally {
+    stmt.free();
+  }
+
+  traders.forEach((trader) => {
+    const daysByDate = daysByTrader.get(trader.id);
+    if (!daysByDate || !trader.days) return;
+
+    trader.days.forEach((day) => {
+      const overrides = daysByDate.get(day.date);
+      if (overrides) Object.assign(day, overrides);
+    });
+  });
 }
 
 function normalizeUpdateStamp(value) {
