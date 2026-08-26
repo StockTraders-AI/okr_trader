@@ -67,7 +67,7 @@ function KrRow({ tr, kr, totals: cachedTotals, year, month }) {
       <div style={{ minWidth: 0 }}><div className="lbl">{kr.label}</div><div className="hint">{kr.hint} → {nf.format(target)}/tháng</div></div>
       <div className="nums">
         <div className="val"><span style={{ color: status.c, fontWeight: 700 }}>{nf.format(actual)}</span><span style={{ color: T.dim }}> / </span><span style={{ color: T.dim }}>{nf.format(target)}</span></div>
-        <div className="pctv" style={{ color: status.c }}>{(progress * 100).toFixed(0)}%</div>
+        <div className="pctv" style={{ color: status.c }}>{Math.min(100, progress * 100).toFixed(0)}%</div>
       </div>
       <div className="track"><div className="fill" style={{ width: `${Math.min(100, progress * 100)}%`, background: status.c }} /></div>
     </div>
