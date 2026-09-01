@@ -14,8 +14,9 @@ import { checkAccount } from "./services/checkAccountApi.js";
 import { createOkrTrader, deleteOkrTrader, loadOkrState, saveOkrDay, saveTraderField, saveTraderRate } from "./services/okrStore.js";
 import { buildTraders, createBlankTrader, DEFAULT_POLICY_TEXT, normalizeTrader, rebuildMonth } from "./utils/okr.js";
 
-const YEAR = 2026;
-const DEFAULT_MONTH = 7;
+const now = new Date();
+const YEAR = now.getFullYear();
+const DEFAULT_MONTH = now.getMonth();
 const ADMIN_PATH = "/himlamst";
 const TRADER_PATH = "/trader";
 const SESSION_KEY = "okr-trader-session";

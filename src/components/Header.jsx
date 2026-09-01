@@ -43,7 +43,7 @@ export default function Header({ user, month, year, onMonth, onLogout, onHelp, l
       {!logoOnly && user && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <select value={month} onChange={(event) => onMonth(Number(event.target.value))}>
-            {[7, 8, 9, 10, 11].map((value) => (
+            {Array.from({ length: 12 }, (_, value) => (
               <option key={value} value={value}>Tháng {value + 1}/{year}</option>
             ))}
           </select>
