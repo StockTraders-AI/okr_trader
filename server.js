@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import initSqlJs from "sql.js";
-import { buildTraders } from "./src/utils/okr.js";
+import { buildTraders, genDays } from "./src/utils/okr.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5175);
@@ -462,12 +462,40 @@ function readMonthState(db, year, month) {
   }
 
   if (!traders) {
-    traders = buildTraders(year, month);
+    const previousTraders = findMostRecentTraders(db, year, month);
+    traders = previousTraders ? carryForwardTraders(previousTraders, year, month) : buildTraders(year, month);
     writeMonthState(db, { year, month, traders });
   }
 
   applyDayValues(db, year, month, traders);
   return { year, month, traders };
+}
+
+// Khi mo 1 thang chua tung co du lieu (vi du bam sang thang moi lan dau),
+// mang theo nguyen danh sach trader (ten, rate, chinh sach) tu thang gan
+// nhat da co truoc do - chi tao lai phan ngay cong (moi thang ngay cong
+// phai bat dau lai). Neu chua tung co thang nao (lan dau tien chay app),
+// moi dung 5 trader mau lam khoi diem.
+function findMostRecentTraders(db, year, month) {
+  const stmt = db.prepare(
+    "SELECT traders_json FROM okr_months WHERE (year < ?) OR (year = ? AND month < ?) ORDER BY year DESC, month DESC LIMIT 1",
+  );
+
+  try {
+    stmt.bind([year, year, month]);
+    if (stmt.step()) return JSON.parse(stmt.getAsObject().traders_json);
+  } finally {
+    stmt.free();
+  }
+
+  return null;
+}
+
+function carryForwardTraders(previousTraders, year, month) {
+  return previousTraders.map((trader) => ({
+    ...trader,
+    days: genDays(year, month, trader.rates, trader.performance, trader.missedReports),
+  }));
 }
 
 function writeMonthState(db, { year, month, traders }) {
