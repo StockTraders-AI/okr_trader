@@ -18,7 +18,7 @@ export default function DetailView({ trader: tr, year, month, tab, isAdmin, onBa
           <button className={"tab" + (tab === "log" ? " active" : "")} onClick={() => onTab("log")} type="button">{`Nh\u1eadt k\u00fd h\u1eb1ng ng\u00e0y`}</button>
         </nav>
       </div>
-      {tab === "score" ? <ScoreView trader={tr} year={year} month={month} /> : <LogView trader={tr} year={year} month={month} onDay={onDay} />}
+      {tab === "score" ? <ScoreView trader={tr} year={year} month={month} /> : <LogView trader={tr} year={year} month={month} isAdmin={isAdmin} onDay={onDay} />}
     </>
   );
 }

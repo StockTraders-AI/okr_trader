@@ -1,11 +1,12 @@
 import { LOG_COLUMNS as LOG_COLS, VN_DOW } from "../data/okrConfig.js";
 import { T } from "../data/theme.js";
-import { ddmm, numberFormatter as nf, parseISO } from "../utils/format.js";
+import { ddmm, iso, numberFormatter as nf, parseISO } from "../utils/format.js";
 import { totals, workingDays } from "../utils/okr.js";
 
-export default function LogView({ trader: tr, year, month, onDay }) {
+export default function LogView({ trader: tr, year, month, isAdmin, onDay }) {
   const cachedTotals = totals(tr);
   const workDays = workingDays(year, month);
+  const todayIso = iso(new Date());
 
   return (
     <div className="card">
@@ -21,17 +22,20 @@ export default function LogView({ trader: tr, year, month, onDay }) {
               const date = parseISO(day.date);
               const off = day.type === "off";
               const dow = `${VN_DOW[date.getDay()]}${day.type === "half" ? " ½" : ""}`;
+              const locked = !isAdmin && day.date < todayIso;
               return (
-                <tr key={day.date} className={`day ${day.type}`}>
+                <tr key={day.date} className={`day ${day.type}`} style={locked ? { opacity: 0.55 } : undefined}>
                   <td className="l"><span style={{ fontFamily: T.mono, fontWeight: 600 }}>{ddmm(date)}</span><span style={{ fontSize: 11, marginLeft: 6, color: off ? "#586074" : T.dim }}>{dow}</span></td>
                   {LOG_COLS.map((column) => (
-                    <td key={column.key}><input className="cell" type="number" onFocus={(event) => event.target.select()} value={day[column.key] ?? 0} onChange={(event) => onDay(tr.id, index, column.key, Number(event.target.value) || 0)} /></td>
+                    <td key={column.key}><input className="cell" type="number" disabled={locked} onFocus={(event) => event.target.select()} value={day[column.key] ?? 0} onChange={(event) => onDay(tr.id, index, column.key, Number(event.target.value) || 0)} /></td>
                   ))}
                   <td>{off ? <span style={{ color: "#586074", fontSize: 12 }}>nghỉ</span> : (
                     <button
                       className="rep"
+                      disabled={locked}
                       onClick={() => onDay(tr.id, index, "report", day.report ? 0 : 1)}
-                      style={{ background: day.report ? `${T.green}22` : `${T.red}1c`, color: day.report ? T.green : T.red, borderColor: `${day.report ? T.green : T.red}55` }}
+                      style={{ background: day.report ? `${T.green}22` : `${T.red}1c`, color: day.report ? T.green : T.red, borderColor: `${day.report ? T.green : T.red}55`, cursor: locked ? "not-allowed" : "pointer" }}
+                      title={locked ? "Đã qua 12h đêm, không thể chỉnh ngày này nữa" : undefined}
                       type="button"
                     >
                       {day.report ? "✓ Đã nộp" : "✕ Chưa"}
