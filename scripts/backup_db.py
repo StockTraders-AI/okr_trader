@@ -19,6 +19,7 @@ DB_FILE = PROJECT_ROOT / "data" / "okr.db"
 BACKUP_DIR = Path("/root/db-backups/okr-trader-web")
 RETENTION_DAYS = 365
 
+BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
