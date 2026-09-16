@@ -1,0 +1,12 @@
+[Unit]
+Description=okr-trader-web daily DB backup service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /root/okr-trader-web/scripts/backup_db.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
